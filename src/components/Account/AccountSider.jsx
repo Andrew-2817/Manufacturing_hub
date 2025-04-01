@@ -1,0 +1,35 @@
+import { UserOutlined, FileSearchOutlined, LogoutOutlined } from "@ant-design/icons"
+import { Layout, Typography, Flex } from "antd"
+import { useTRPS } from "../../../context"
+import { useState } from "react"
+const {Sider} = Layout
+const SiderStyle = {
+    backgroundColor: 'rgb(224, 228, 238)',
+    position: 'sticky',
+    top: '12vh',
+    height:"88vh",
+    // padding: '1rem'
+}
+export function AccountSider({currentUser}){
+    const {app, setApp, data, setData, location} = useTRPS()
+    console.log(currentUser);
+    
+    function handleChooseTab(tab){
+        if(tab == 'app'){
+            setApp(true)
+            setData(false)
+        }else{
+            setData(true)
+            setApp(false)
+        }
+    }
+    return <Sider width={"25%"} style={SiderStyle}>
+        <Typography.Title style={{textAlign:'center', marginBottom: '60px', marginTop: '1rem'}} level={4}>{currentUser && currentUser.username}</Typography.Title>
+        <ul style={{display: 'flex', flexDirection: 'column', listStyle: 'none', gap:0, marginBottom: '45vh'}}>
+            <li onClick={() => handleChooseTab('app')} style={{padding: '1.5rem 0', width:'100%', background: app && 'rgb(228, 213, 189)', transition: 'all ease .3s', paddingLeft: '17%'}}><Flex align="center" gap={30}><FileSearchOutlined style={{fontSize:25, color: 'rgb(248, 187, 80)'}} /><Typography.Title style={{margin: 0, fontWeight:400}} level={4}>{location.pathname === '/user/account' && "Мои заявки"}{location.pathname === '/department/account' && "Заявки пользователей"}{location.pathname === '/executor/account' && "Мои заказы"}</Typography.Title></Flex></li>
+            <li onClick={() => handleChooseTab('data')} style={{padding: '1.5rem 0', width:'100%', background: data && 'rgb(228, 213, 189)', transition: 'all ease .3s', paddingLeft: '17%'}}><Flex align="center" gap={30}><UserOutlined style={{fontSize:25, color: 'rgb(248, 187, 80)'}}  /><Typography.Title style={{margin: 0, fontWeight:400}} level={4}>Мои данные</Typography.Title></Flex></li>
+        </ul>
+
+        <a href="/user"><Flex style={{cursor: 'pointer'}} justify="center" align="center" gap={30}><LogoutOutlined  style={{fontSize:25, color: 'rgb(248, 187, 80)'}}  /><Typography.Title style={{margin: 0, fontWeight:400}} level={4}>Выйти</Typography.Title></Flex></a>
+    </Sider>
+}

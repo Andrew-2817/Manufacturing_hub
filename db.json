@@ -1,0 +1,160 @@
+{
+  "users": [
+    {
+      "id": "d67d",
+      "username": "Андрей Трухманов",
+      "email": "andrew@gmail.com",
+      "password": "111111111",
+      "checkPassword": "111111111"
+    }
+  ],
+  "currentUser": {
+    "id": "d67d",
+    "username": "Андрей Трухманов",
+    "email": "andrew@gmail.com",
+    "password": "111111111",
+    "checkPassword": "111111111"
+  },
+  "applications": [
+    {
+      "id": "f50c",
+      "name": "Андрей Вячеславович Трухманов",
+      "post": "truhanandrey991@gmail.com",
+      "work": "fffffff",
+      "description": "ffffffffffffffffff",
+      "selectEducation": "Среднее общее образование",
+      "selectPost": "Технический отдел",
+      "selectSkills": [
+        "Выбери навыки",
+        "Знание основ электротехники и автоматизации",
+        "Чтение и составление ТЗ"
+      ],
+      "file": {
+        "uid": "rc-upload-1742574639978-3"
+      }
+    },
+    {
+      "id": "03c3",
+      "name": "Андрей Вячеславович Трухманов",
+      "post": "truhanandrey991@gmail.com",
+      "work": "fffffff",
+      "description": "fvffvffv",
+      "selectEducation": "Среднее профессиональное образование",
+      "selectPost": "Технический отдел",
+      "selectSkills": [
+        "Выбери навыки",
+        "Навыки работы на станках",
+        "Контроль качества продукции"
+      ],
+      "file": {
+        "uid": "rc-upload-1742574925810-3"
+      }
+    },
+    {
+      "id": "4c19",
+      "name": "трухманова Андрей",
+      "post": "truhanandrey991@gmail.com",
+      "work": "fffffff",
+      "description": "eedede",
+      "selectEducation": "Среднее профессиональное образование",
+      "selectPost": "Производитель",
+      "selectSkills": [
+        "Выбери навыки",
+        "Контроль качества продукции"
+      ],
+      "file": {
+        "uid": "rc-upload-1742574925810-7"
+      }
+    },
+    {
+      "id": "3981",
+      "name": "Андрей Вячеславович Трухманов",
+      "post": "truhan@gmail.com",
+      "work": "fffffff",
+      "description": "111111111111111111111111111111111111111",
+      "selectEducation": "Среднее общее образование",
+      "selectPost": "Технический отдел",
+      "selectSkills": [
+        "Выбери навыки",
+        "Навыки работы на станках",
+        "Знание основ электротехники и автоматизации"
+      ],
+      "file": {
+        "uid": "rc-upload-1743330482534-5"
+      }
+    },
+    {
+      "id": "bbb2",
+      "name": "Andrew Trukhmanow",
+      "post": "rewereer@gmail.com",
+      "work": "fffffff",
+      "description": "   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\",
+      "selectEducation": "Среднее общее образование",
+      "selectPost": "Технический отдел",
+      "selectSkills": [
+        "Выбери навыки",
+        "Знание основ электротехники и автоматизации"
+      ],
+      "file": {
+        "uid": "rc-upload-1743330482534-9"
+      }
+    }
+  ],
+  "userApps": [
+    {
+      "id": "2ca6",
+      "OrderId": 5699,
+      "userId": "d67d",
+      "email": "truhan@gmail.com",
+      "file": null,
+      "description": "ввввввввввв",
+      "deadline": "Как можно скорее",
+      "status": "reject",
+      "paidFor": 0
+    },
+    {
+      "id": "3ddb",
+      "OrderId": 9105,
+      "userId": "d67d",
+      "email": "rewereer@gmail.com",
+      "file": null,
+      "description": "",
+      "deadline": "В течение недели",
+      "status": "sent",
+      "paidFor": "10000"
+    },
+    {
+      "id": "6735",
+      "OrderId": 4089,
+      "userId": "d67d",
+      "email": "andrew@gmail.com",
+      "file": null,
+      "description": "",
+      "deadline": "В течение недели",
+      "status": "sent",
+      "paidFor": 100
+    },
+    {
+      "id": "7d86",
+      "OrderId": 7891,
+      "userId": "d67d",
+      "email": "andrew@gmail.com",
+      "file": null,
+      "description": "",
+      "deadline": "В течение недели",
+      "status": "sent",
+      "paidFor": 100
+    },
+    {
+      "id": "d210",
+      "OrderId": 6977,
+      "userId": "d67d",
+      "email": "truhanandrey991@gmail.com",
+      "file": null,
+      "description": "",
+      "deadline": "В течение недели",
+      "status": "sent",
+      "paidFor": 100
+    }
+  ]
+}
