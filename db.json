@@ -1,20 +1,21 @@
 {
   "users": [
     {
-      "id": "d67d",
+      "id": "b111",
+      "username": "Андрей Трухманов",
+      "email": "truhanandrey991@gmail.com",
+      "password": "11111111",
+      "checkPassword": "11111111"
+    },
+    {
+      "id": "38bc",
       "username": "Андрей Трухманов",
       "email": "andrew@gmail.com",
       "password": "111111111",
       "checkPassword": "111111111"
     }
   ],
-  "currentUser": {
-    "id": "d67d",
-    "username": "Андрей Трухманов",
-    "email": "andrew@gmail.com",
-    "password": "111111111",
-    "checkPassword": "111111111"
-  },
+  "currentUser": {},
   "applications": [
     {
       "id": "f50c",
@@ -102,59 +103,32 @@
   ],
   "userApps": [
     {
-      "id": "2ca6",
-      "OrderId": 5699,
-      "userId": "d67d",
-      "email": "truhan@gmail.com",
-      "file": null,
-      "description": "ввввввввввв",
-      "deadline": "Как можно скорее",
-      "status": "reject",
-      "paidFor": 0
-    },
-    {
-      "id": "3ddb",
-      "OrderId": 9105,
-      "userId": "d67d",
-      "email": "rewereer@gmail.com",
+      "id": "3826",
+      "OrderId": 2413,
+      "userId": "38bc",
+      "email": "andrew@gmail.com",
       "file": null,
       "description": "",
       "deadline": "В течение недели",
       "status": "sent",
       "paidFor": "10000"
+    }
+  ],
+  "orderResources": [
+    {
+      "name": "Шлифовальные станки",
+      "quantity": "1",
+      "id": "eec2"
     },
     {
-      "id": "6735",
-      "OrderId": 4089,
-      "userId": "d67d",
-      "email": "andrew@gmail.com",
-      "file": null,
-      "description": "",
-      "deadline": "В течение недели",
-      "status": "sent",
-      "paidFor": 100
+      "id": "c0f2",
+      "name": "Фрезерные странки",
+      "quantity": "4"
     },
     {
-      "id": "7d86",
-      "OrderId": 7891,
-      "userId": "d67d",
-      "email": "andrew@gmail.com",
-      "file": null,
-      "description": "",
-      "deadline": "В течение недели",
-      "status": "sent",
-      "paidFor": 100
-    },
-    {
-      "id": "d210",
-      "OrderId": 6977,
-      "userId": "d67d",
-      "email": "truhanandrey991@gmail.com",
-      "file": null,
-      "description": "",
-      "deadline": "В течение недели",
-      "status": "sent",
-      "paidFor": 100
+      "id": "29ec",
+      "name": "Столярные станки",
+      "quantity": "19"
     }
   ]
 }

@@ -113,7 +113,7 @@ export function UserOrder({selectedNumber, isOpen, onClose}){
                     onRemove={() => setFile(null)}
                     style={{marginLeft: '10%'}}
                 >
-                    <button type="button" className="upload_img_button" icon={<UploadOutlined />}>Выберите файл (PDF или DOCX)</button>
+                    <button type="button" className="upload_img_button" icon={<UploadOutlined />}>Выберите файл</button>
                 </Upload>
                 </div>
                 <ConfigProvider

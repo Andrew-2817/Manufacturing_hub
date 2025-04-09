@@ -78,7 +78,7 @@ export function AccountDepartmentMain({applications, currentUser, setUserApplica
                 <Button
                     style={tabStyle}
                     isActive={activeTab === 'sent_for_evaluation' ? true : false}
-                    onClick={() => filterApplications(['sent_for_evaluation'], 'send_for_evaluation')}
+                    onClick={() => filterApplications(['sent_for_evaluation'], 'sent_for_evaluation')}
                     >
                         Новые
                 </Button>

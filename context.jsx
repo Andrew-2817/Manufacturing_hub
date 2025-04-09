@@ -8,6 +8,7 @@ export function ContextProvider({children}){
     const [loading, setLoading] = useState(false)
     const [app, setApp] = useState(true)
     const [data, setData] = useState(false)
+    const [resource, setResource] = useState(false)
     const [currentUser, setCurrentUser] = useState(null);
     const location = useLocation();
     useEffect(() => {
@@ -23,6 +24,7 @@ export function ContextProvider({children}){
         location,
         app, setApp,
         data, setData,
+        resource, setResource,
         currentUser, setCurrentUser,
         }}>
         {children}

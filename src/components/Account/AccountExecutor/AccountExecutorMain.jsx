@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { ExecutorApplicationCard } from "./ExecutorApplicationCard"
 import { Button } from "../../Button"
 import axios from "axios"
+import { ExecutorResourceManagement } from "./ExecutorResourceManagement"
 const {Content} = Layout
 const contentStyle = {
     maxWidth: '50%',
@@ -19,7 +20,7 @@ const tabStyle = {
 }
 
 export function AccountExecutorMain({applications, setUserApplications}){
-    const {app} = useTRPS()
+    const {app, resource} = useTRPS()
         const [filteredApps, setFilteredApps] = useState([]);
         const [activeTab, setActiveTab] = useState("all");
         console.log(applications);
@@ -113,5 +114,6 @@ export function AccountExecutorMain({applications, setUserApplications}){
             </div>
         </>
         }
+        {resource && <ExecutorResourceManagement/>}
     </Content>
 }

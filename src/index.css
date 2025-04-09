@@ -8,6 +8,10 @@ a{
     outline: none;
 
 }
+table {
+    border-collapse: separate; /* Важно! */
+    border-spacing: 0 20px; /* 10px - вертикальный отступ между строками */
+  }
 a:hover{
     color: #d1d1d1
 }
@@ -175,7 +179,7 @@ a:hover{
 
 .content_tabs{
     border: 1px solid #e6cea4;
-    padding: 2.5% 5%;
+    padding: 0.5rem 1rem;
     border-radius: 10px;
     background: none;
     color: rgb(59, 59, 59);
@@ -200,7 +204,7 @@ a:hover{
 }
 .content_tabs_active{
     border: 1px solid #e6cea4;
-    padding: 2.5% 5%;
+    /* padding: 2.5% 5%; */
     border-radius: 10px;
     background: linear-gradient(150deg,rgb(248, 187, 80),rgb(94, 94, 92));
     color: #fff;
