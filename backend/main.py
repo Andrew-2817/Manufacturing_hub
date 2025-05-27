@@ -15,12 +15,13 @@ origins = [
     # Добавьте другие адреса, если ваш фронтенд будет работать не на localhost:5173
 ]
 
+# Добавляем middleware для обработки CORS запросов
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins, # Список разрешенных источников
-    allow_credentials=True, # Разрешаем куки (если будете использовать аутентификацию на основе сессий)
+    allow_credentials=True, # Разрешаем передачу куки, заголовков авторизации и TLS сертификатов в CORS запросах
     allow_methods=["*"], # Разрешаем все HTTP методы (GET, POST, PUT, DELETE, PATCH и т.д.)
-    allow_headers=["*"], # Разрешаем все заголовки в запросах
+    allow_headers=["*"], # Разрешаем все заголовки в запросах, включая Authorization (для токенов)
 )
 
 app.include_router(user_api.router)

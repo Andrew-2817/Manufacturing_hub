@@ -28,25 +28,27 @@ const headerStyle = {
 export function LoginHeader(){
     const [employeeModal, setEmployeeModal] = useState(false);
     const navigate = useNavigate();
-    // Получаем currentUser и setCurrentUser из контекста
     const { currentUser, setCurrentUser } = useTRPS();
-    // Получаем location напрямую из react-router-dom
     const location = useLocation();
 
 
-    // Функция для выхода из аккаунта
+    // Функция для выхода из аккаунта (ОСНОВНЫЕ ИЗМЕНЕНИЯ ЗДЕСЬ)
     async function Logout(){
         try {
-            // Очищаем currentUser в контексте
-            setCurrentUser(null);
-            // Удаляем данные пользователя из localStorage
+            console.log("Logging out: Clearing localStorage and context.");
+            // ИЗМЕНЕНО: Удаляем токен доступа из localStorage
+            localStorage.removeItem('accessToken');
+             // Также удаляем минимальные данные пользователя
             localStorage.removeItem('currentUserData');
 
+            // Очищаем currentUser в контексте
+            setCurrentUser(null);
+
             alert("Вы вышли из аккаунта");
-            // Редирект на страницу входа
+             // Перенаправляем на страницу логина
             navigate('/login');
         } catch (error) {
-            // В этой модели ошибки здесь быть не должно
+            // В этой модели ошибки здесь быть не должно при работе с localStorage
             console.error('Error logging out:', error);
             alert('Logout failed!');
         }
@@ -57,9 +59,7 @@ export function LoginHeader(){
     const isLoginPage = location.pathname === '/login';
     const isDepartmentPage = location.pathname === '/department';
     const isExecutorPage = location.pathname === '/executor';
-    // Эта проверка account страниц здесь не нужна для логики Header'а,
-    // так как на account страницах используется AccountHeader.jsx
-    // const isAccountPage = location.pathname.endsWith('/account');
+    // const isAccountPage = location.pathname.endsWith('/account'); // Не нужна здесь
 
     return(
         <Header style={headerStyle}>
@@ -102,7 +102,7 @@ export function LoginHeader(){
                 </ul>
             )}
 
-            {(isDepartmentPage || isExecutorPage) && currentUser && ( // Добавил проверку currentUser, хотя роутинг должен это обеспечивать
+            {(isDepartmentPage || isExecutorPage) && currentUser && ( // Добавил проверку currentUser
                 <>
                     <Flex gap={10} align="center">
                         <Typography.Title style={{fontWeight:400, marginBottom:0}} level={4}>
@@ -124,7 +124,6 @@ export function LoginHeader(){
                     </ul>
                 </>
             )}
-
 
             <ColaborationOrder close={() => setEmployeeModal(false)} open={employeeModal}/>
         </Header>

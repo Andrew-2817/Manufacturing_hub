@@ -34,3 +34,4 @@ class OrderUpdate(BaseModel):
     price: Optional[float] = None
     ready_to: Optional[bool] = None
     file_path: Optional[str] = None
+    # Не включаем user_order_id и id в схему обновления, т.к. они не должны меняться через этот эндпоинт

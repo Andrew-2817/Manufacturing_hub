@@ -1,9 +1,12 @@
 from sqlalchemy.orm import Session
+# Импортируем функцию для хеширования пароля
+from backend.auth import get_password_hash
 
 from backend.models.user import User
 
-
+# Функция для создания пользователя (использует хеширование пароля)
 def create_user(db: Session, name: str, email: str, password: str, role: str):
+    # Хеширование пароля происходит в API эндпоинте перед вызовом этой функции
     db_user = User(name=name, email=email, password=password, role=role)
     db.add(db_user)
     db.commit()
@@ -23,6 +26,7 @@ def get_users(db: Session):
     return db.query(User).all()
 
 
+# Обновляем функцию update_user для опционального хеширования пароля
 def update_user(db: Session, user_id: int, name: str = None, email: str = None, password: str = None, role: str = None):
     user_obj = db.query(User).filter(User.id == user_id).first()
     if user_obj:
@@ -31,7 +35,8 @@ def update_user(db: Session, user_id: int, name: str = None, email: str = None, 
         if email is not None:
              user_obj.email = email
         if password is not None:
-             user_obj.password = password # В реальном приложении: hash_password(password)
+             # ХЕШИРУЕМ НОВЫЙ ПАРОЛЬ перед сохранением
+             user_obj.password = get_password_hash(password)
         if role is not None:
              user_obj.role = role
         db.commit()

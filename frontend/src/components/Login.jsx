@@ -5,6 +5,14 @@ import { useTRPS } from "../../context";
 import { Button } from "./Button";
 import { Link, useNavigate } from "react-router-dom";
 import axios from 'axios';
+// Импортируем qs для форматирования данных формы для OAuth2
+import { stringify } from 'qs';
+// Импортируем status из Ant Design, если он используется для сообщений,
+// или можно использовать статусы из response.status
+// import { status } from 'antd'; // Ant Design status не подходит здесь
+
+// Импортируем статус из starlette, если нужно сравнение с ним (непрямое использование)
+// import { status as httpStatus } from 'starlette'; // Не нужно напрямую
 
 const {Content}  = Layout
 const contentStyle = {
@@ -23,9 +31,8 @@ export function Login(){
     const navigate = useNavigate();
 
     const context = useTRPS();
-    const { setCurrentUser } = context; // Теперь setCurrentUser точно функция, т.к. ContextProvider оборачивает RouterProvider
+    const { setCurrentUser } = context; // Получаем setCurrentUser из контекста
 
-    // Состояние для формы регистрации
     const [regFormData, setRegFormData] = useState({
         username: '',
         email: '',
@@ -33,13 +40,12 @@ export function Login(){
         checkPassword: ''
       });
 
-    // Состояние для формы входа
     const [enterFormData, setEnterFormData] = useState({
-        email: '',
+        email: '', // Будет использоваться как username в OAuth2 форме
         password: '',
     });
 
-    const [error, setError] = useState('');
+    const [error, setError] = useState(''); // Состояние для ошибок формы
 
     const handleRegChange = (e) => {
         setRegFormData({ ...regFormData, [e.target.name]: e.target.value });
@@ -49,6 +55,7 @@ export function Login(){
         setEnterFormData({ ...enterFormData, [e.target.name]: e.target.value });
       };
 
+    // Обработчик отправки формы регистрации
     const handleRegSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -71,12 +78,14 @@ export function Login(){
                 name: regFormData.username,
                 email: regFormData.email,
                 password: regFormData.password,
-                role: 'user'
+                role: 'user' // Роль по умолчанию при регистрации через эту форму
             };
+            // Отправляем данные для регистрации как JSON POST
             const registerResponse = await axios.post('http://localhost:8000/users/', userDataToRegister);
             console.log('User registered:', registerResponse.data);
 
             alert('Регистрация успешна! Теперь войдите в систему.');
+            // Очищаем форму и переключаемся на форму входа
             setRegFormData({
                 username: '',
                 email: '',
@@ -87,50 +96,91 @@ export function Login(){
 
         } catch (error) {
             console.error('Error registering user:', error);
+            // Обработка ошибок с бэкенда
             if (error.response && error.response.data && error.response.data.detail) {
                 setError(error.response.data.detail);
             } else {
                  setError('Ошибка регистрации. Попробуйте позже.');
             }
         }
-      };
+    };
 
-      const handleEnterSubmit = async (e) => {
+    // Обработчик отправки формы входа (ОСНОВНЫЕ ИЗМЕНЕНИЯ ЗДЕСЬ)
+    const handleEnterSubmit = async (e) => {
         e.preventDefault();
-        setError('');
+        setError(''); // Сбрасываем ошибку перед отправкой
 
+        // Валидация на фронте
         if (enterFormData.email === '' || enterFormData.password === ''){
             setError('Заполните все поля');
             return;
         }
 
         try {
-            const loginResponse = await axios.post('http://localhost:8000/users/login/', enterFormData);
+            // Отправляем данные для логина в формате x-www-form-urlencoded на эндпоинт логина OAuth2
+            // Используем qs.stringify для правильного форматирования
+            const loginResponse = await axios.post(
+                'http://localhost:8000/users/login/', // Эндпоинт логина на бэкенде
+                 // Форматируем данные формы
+                stringify({
+                    username: enterFormData.email, // В OAuth2PasswordRequestForm email ожидается как 'username'
+                    password: enterFormData.password,
+                }),
+                {
+                     headers: {
+                        // Устанавливаем правильный Content-Type для x-www-form-urlencoded
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                     },
+                }
+            );
             console.log('Login successful:', loginResponse.data);
 
-            // Устанавливаем данные пользователя в контекст
-            setCurrentUser(loginResponse.data);
+            const responseData = loginResponse.data; // Ответ должен содержать access_token, token_type, user_id, user_role
 
-            // Сохраняем ID и роль пользователя в localStorage для запоминания
-            // НЕ СОХРАНЯЙТЕ ПАРОЛЬ В localStorage!
-            localStorage.setItem('currentUserData', JSON.stringify({ id: loginResponse.data.id, role: loginResponse.data.role }));
+            // ИЗМЕНЕНО: Сохраняем ТОЛЬКО токен доступа в localStorage
+            localStorage.setItem('accessToken', responseData.access_token);
+            // Также сохраняем минимальные данные пользователя (id и role) для использования в контексте
+            // перед тем, как /me эндпоинт загрузит полные данные.
+            localStorage.setItem('currentUserData', JSON.stringify({ id: responseData.user_id, role: responseData.user_role }));
 
-            // ИЗМЕНЕНО: Редирект на ГЛАВНУЮ страницу пользователя
-            navigate('/user');
+            // ИЗМЕНЕНО: Устанавливаем минимальные данные пользователя в контекст сразу после логина
+            // Полные данные пользователя будут загружены ContextProvider'ом при следующей проверке (useEffect)
+            setCurrentUser({ id: responseData.user_id, role: responseData.user_role });
+
+
+            // Редирект на соответствующую страницу в зависимости от роли пользователя
+            // Теперь логика редиректа использует user_role из ответа логина
+            if (responseData.user_role === 'user') {
+                navigate('/user/account'); // Редирект в личный кабинет пользователя
+            } else if (responseData.user_role === 'department') {
+                navigate('/department/account'); // Редирект в личный кабинет отдела
+            } else if (responseData.user_role === 'executor') {
+                navigate('/executor/account'); // Редирект в личный кабинет производителя
+            } else {
+                // Если роль неизвестна или не соответствует ожидаемым, можно перенаправить на главную или логин
+                console.warn("Unknown user role received:", responseData.user_role);
+                navigate('/'); // Или navigate('/login')
+            }
+
             alert('Вход выполнен успешно!');
 
         } catch (error) {
             console.error('Error logging in:', error);
-            if (error.response && error.response.data && error.response.data.detail) {
-                setError(error.response.data.detail);
+            // Обработка ошибок с бэкенда. 401 Unauthorized -> неверные учетные данные
+            // Используем статус из ответа
+            if (error.response && error.response.status === 401) {
+                 setError('Неверная почта или пароль.');
+            } else if (error.response && error.response.data && error.response.data.detail) {
+                setError(`Ошибка: ${error.response.data.detail}`);
             } else {
-                setError('Ошибка входа. Проверьте почту и пароль.');
+                setError('Ошибка входа. Попробуйте позже.');
             }
         }
-      };
+    };
 
+    // Функция для переключения между формами входа и регистрации
     function handleChangeForm(form){
-        setError('');
+        setError(''); // Сбрасываем ошибки при переключении форм
         if (form === 'enter'){
             setEnterform(true);
             setRegform(false);
@@ -162,7 +212,8 @@ export function Login(){
                                             name="email"
                                             className="log_inp1"
                                             type="email"
-                                            required
+                                            required // Добавил required для базовой валидации
+                                            placeholder=" " // Добавил placeholder для работы CSS меток
                                         />
                                         <label htmlFor="">Логин:</label>
                                     </div>
@@ -173,16 +224,21 @@ export function Login(){
                                             onChange={handleEnterChange}
                                             className="log_inp2"
                                             type="password"
-                                            required
+                                            required // Добавил required
+                                            placeholder=" " // Добавил placeholder
                                         />
                                         <label htmlFor="">Пароль:</label>
                                     </div>
                                     <p style={{margin: '10px 0', color: '#f34848'}} className="for_display_errors">{error}</p>
                                     <div className="login_register">
-                                        <h4>Нет аккаунта?</h4>
-                                        <p style={{cursor: 'pointer'}} onClick={() => handleChangeForm('reg')}>зарегистрироваться</p>
+                                        <div className="register_now_element">
+                                            <h4>Нет аккаунта?</h4>
+                                            <Link to="/login" onClick={(e) => { e.preventDefault(); handleChangeForm('reg'); }}>
+                                                <p style={{cursor: 'pointer'}}>зарегистрироваться</p>
+                                            </Link>
+                                        </div>
+                                        <button type="submit" className="log_in_click">Войти</button>
                                     </div>
-                                    <button type="submit" className="log_in_click">Войти</button>
                                 </form>
                             )}
 
@@ -197,6 +253,7 @@ export function Login(){
                                             className="reg_inp_password"
                                             type="email"
                                             required
+                                            placeholder=" "
                                         />
                                         <label htmlFor="">Логин:</label>
                                     </div>
@@ -208,6 +265,7 @@ export function Login(){
                                             className="reg_inp_password"
                                             type="text"
                                             required
+                                            placeholder=" "
                                         />
                                         <label htmlFor="">Имя:</label>
                                     </div>
@@ -220,6 +278,7 @@ export function Login(){
                                             type="password"
                                             required
                                             minLength={8}
+                                            placeholder=" "
                                         />
                                         <label htmlFor="">Пароль:</label>
                                     </div>
@@ -232,6 +291,7 @@ export function Login(){
                                             type="password"
                                             required
                                             minLength={8}
+                                            placeholder=" "
                                         />
                                         <label htmlFor="">Повторить пароль:</label>
                                     </div>

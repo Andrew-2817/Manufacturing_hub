@@ -134,7 +134,6 @@ export function ExecutorResourceManagement() {
                 <td style={{textAlign: 'center'}}>{resource.name}</td>
                 <td style={{textAlign: 'center'}}>{resource.quantity}</td>
                 <td style={{textAlign: 'center'}}>
-                  {/* <button onClick={() => handleEdit(resource)}>Редактировать</button> */}
                   <Button style={{}} onClick={() => handleDeleteResource(resource.id)}>Удалить</Button>
                 </td>
               </tr>

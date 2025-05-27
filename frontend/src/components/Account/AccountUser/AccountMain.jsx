@@ -1,17 +1,20 @@
-import { Layout, Typography, message, Flex } from "antd"
+import { Layout, Typography, message, Flex, Spin } from "antd" // Импортируем Spin
 import { useTRPS } from "../../../../context"
-import { UserApplicationCardOne } from "./UserApplicationCardOne"
+// import { UserApplicationCardOne } from "./UserApplicationCardOne" // Оставим импорт, он используется ниже
 import { useEffect, useState } from "react"
 import { PersonalData } from "../PersonalData"
 import { Button } from "../../Button"
 import axios from "axios"
+import { UserApplicationCardOne } from "./UserApplicationCardOne" // Явный импорт
+
+
 const {Content} = Layout
 const contentStyle = {
     maxWidth: '50%',
     margin: '0 auto',
     minHeight: '82vh',
     marginTop:'18vh',
-    
+
 }
 const tabStyle = {
     padding: '0.7rem 1rem',
@@ -19,101 +22,148 @@ const tabStyle = {
 
 }
 
-export function AccountMain({applications, currentUser, setUserApplications}){
-    const {app, data } = useTRPS()
+// Определяем списки статусов для фильтрации заявок пользователя
+const USER_STATUSES = {
+    all: [],
+    evaluation: ['sent_for_evaluation', 'accepted_evaluation'], // На оценке
+    evaluated: ['evaluated'], // Оплатить
+    produced: ['paid_for', 'accepted_production', 'produced'], // На производстве (оплачено, в производстве, готово)
+    completed: ['sent', 'reject'], // Завершенные (отправлено, отклонено)
+};
+
+
+export function AccountMain({ applications, currentUser, setUserApplications, loading }){ // Принимаем applications, currentUser, setUserApplications и loading
+    const {app, data } = useTRPS();
+
     const [filteredApps, setFilteredApps] = useState([]);
     const [activeTab, setActiveTab] = useState("all");
-        useEffect(() => {
-            setFilteredApps(applications);
-            setActiveTab("all"); // Сброс таба на "Все заявки" при обновлении данных
-        }, [applications]);
-        const filterApplications = (statusList, statusChange) => {
-            if (statusChange === "all") {
-                setFilteredApps(applications);
-            } else {
-                setFilteredApps(applications.filter(app => statusList.includes(app.status)));
-            }
-            setActiveTab(statusChange);
-        };
 
-        // Обновляем статусы заказов пользователя
-        const handleUpdateApplication = async (orderNumber, newStatus) => {
-            console.log(newStatus);
-            
-            try {
-                await axios.patch(`http://localhost:3001/userApps/${orderNumber}`, {
-                    status: newStatus
-                });
-                
-                // Обновляем конкретную заявку в общем списке
-                setUserApplications(prev => prev.map(app => 
-                    app.id === orderNumber ? {...app, status: newStatus} : app
-                ));
-                
-                message.success('Статус заявки обновлен');
-            } catch (error) {
-                console.error('Ошибка при обновлении статуса:', error);
-                message.error('Не удалось обновить статус');
-            }
+    // Обновляем filteredApps при изменении applications или activeTab
+    useEffect(() => {
+        console.log("AccountMain useEffect: applications or activeTab changed", { applications, activeTab });
+         if (!applications) {
+             setFilteredApps([]);
+             return;
+         }
+        const statusesToFilter = USER_STATUSES[activeTab];
+        if (activeTab === "all") {
+            setFilteredApps(applications);
+        } else {
+            setFilteredApps(applications.filter(app => statusesToFilter.includes(app.status)));
         }
-    
+    }, [applications, activeTab]);
+
+
+    // Функция для смены активной вкладки фильтрации
+    const handleTabChange = (tabKey) => {
+        setActiveTab(tabKey);
+    };
+
+
+    // Обновляем статус заказа пользователя на бэкенде и в локальном состоянии
+    // Эта функция будет передаваться в UserApplicationCardOne
+    const handleUpdateApplication = async (orderId, updates) => {
+        console.log(`Attempting to update user order ${orderId} with:`, updates);
+
+         if (Object.keys(updates).length === 0) {
+             console.warn("No updates provided for handleUpdateApplication");
+             return;
+         }
+
+        try {
+            const response = await axios.patch(`http://localhost:8000/orders/${orderId}`, updates);
+            console.log('User order updated on backend:', response.data);
+
+             // Обновляем конкретную заявку в общем списке заявок
+            setUserApplications(prev => prev.map(app =>
+                app.id === orderId ? { ...app, ...response.data } : app
+            ));
+
+            message.success('Статус заказа обновлен');
+
+        } catch (error) {
+            console.error('Error updating user order status:', error);
+            let errorMessage = 'Не удалось обновить статус заказа.';
+             if (error.response && error.response.data && error.response.data.detail) {
+                errorMessage = `Ошибка: ${error.response.data.detail}`;
+            }
+            message.error(errorMessage);
+        }
+    }
+
+
     return <Content style={contentStyle}>
-        {app && 
+        {app &&
         <>
-            <Flex 
-                activeKey={activeTab}
-                onChange={filterApplications}
-                type="card"
+            <Flex
                 justify="space-between"
                 style={{ marginBottom: 30, width:"90%"}}
             >
                 <Button
                     style={tabStyle}
-                    isActive={activeTab === 'all' ? true : false}
-                    onClick={() => filterApplications('all', 'all')}
+                    isActive={activeTab === 'all'}
+                    onClick={() => handleTabChange('all')}
                     >
-                        Все
+                        Все ({applications?.length || 0})
                 </Button>
                 <Button
                     style={tabStyle}
-                    isActive={(activeTab === 'evaluation') ? true : false}
-                    onClick={() => filterApplications(['sent_for_evaluation', 'accepted_evaluation'], 'evaluation')}
+                    isActive={activeTab === 'evaluation'}
+                    onClick={() => handleTabChange('evaluation')}
                     >
-                        На оценке
+                        На оценке ({applications?.filter(app => USER_STATUSES.evaluation.includes(app.status)).length || 0})
                 </Button>
                 <Button
                     style={tabStyle}
-                    isActive={activeTab === 'evaluated' ? true : false}
-                    onClick={() => filterApplications(['evaluated'], 'evaluated')}
+                    isActive={activeTab === 'evaluated'}
+                    onClick={() => handleTabChange('evaluated')}
                     >
-                        Оплатить
+                        Оплатить ({applications?.filter(app => USER_STATUSES.evaluated.includes(app.status)).length || 0})
                 </Button>
                 <Button
                     style={tabStyle}
-                    isActive={activeTab === 'produced' ? true : false}
-                    onClick={() => filterApplications(['accepted_production', 'produced'], 'produced')}
+                    isActive={activeTab === 'produced'}
+                    onClick={() => handleTabChange('produced')}
                     >
-                        На производстве
+                        На производстве ({applications?.filter(app => USER_STATUSES.produced.includes(app.status)).length || 0})
                 </Button>
                 <Button
                     style={tabStyle}
-                    isActive={activeTab === 'completed' ? true : false}
-                    onClick={() => filterApplications(['sent', 'reject'], 'completed')}
+                    isActive={activeTab === 'completed'}
+                    onClick={() => handleTabChange('completed')}
                     >
-                        Завершенные
+                        Завершенные ({applications?.filter(app => USER_STATUSES.completed.includes(app.status)).length || 0})
                 </Button>
             </Flex>
+
             <Typography.Title style={{marginBottom:60}} level={2}>Мои заказы</Typography.Title>
+
             <div className="">
-                {filteredApps && filteredApps.map(app => (
-                <UserApplicationCardOne app={app} key={app.id} onStatusChange={handleUpdateApplication}/>
-                ))}
+                {loading ? (
+                     <Typography.Text>Загрузка заказов...</Typography.Text>
+                ) : (
+                    filteredApps && filteredApps.length > 0 ? (
+                        filteredApps.map(app => (
+                            // Передаем данные заказа и функцию обновления
+                            <UserApplicationCardOne
+                                app={app}
+                                key={app.id}
+                                onStatusChange={handleUpdateApplication} // Передаем функцию обновления
+                            />
+                        ))
+                    ) : (
+                         <Typography.Text>Нет заказов с таким статусом.</Typography.Text>
+                    )
+                )}
             </div>
         </>
         }
-        {data && <>
-            <Typography.Title style={{marginBottom:60}} level={2}>Мои данные</Typography.Title>
-            <PersonalData currentUser={currentUser}/>
-        </>}
+        {data && currentUser && (
+            <>
+                <Typography.Title style={{marginBottom:60}} level={2}>Мои данные</Typography.Title>
+                <PersonalData currentUser={currentUser}/>
+            </>
+        )}
+
     </Content>
 }
