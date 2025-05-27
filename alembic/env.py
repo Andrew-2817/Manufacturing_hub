@@ -1,23 +1,11 @@
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
-
 from alembic import context
 
-from backend.database import Base, engine
-from backend.models.user import User
-from backend.models.order import Order
-from backend.models.manufacture import Manufacture
-from backend.models.resources import Resource
-from backend.models.order_resources import OrderResource
-from backend.models.manufacture_user import ManufactureUser
-from backend.models.manufacture_order import ManufactureOrder
-
+from backend.database import Base, SQLALCHEMY_DATABASE_URL
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -26,20 +14,6 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-
-db_user = os.getenv("DB_USERNAME")
-db_password = os.getenv("DB_PASSWORD")
-db_host = os.getenv("DB_HOST")
-db_name = os.getenv("DB_NAME")
-
-if not all([db_user, db_password]):
-    raise ValueError("Database credentials (DB_USERNAME, DB_PASSWORD) must be set in environment variables or .env file")
-
-database_url = f"postgresql://{db_user}:{db_password}@{db_host}/{db_name}"
-
-
-config.set_main_option('sqlalchemy.url', database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -84,7 +58,11 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
 
     with connectable.connect() as connection:
         context.configure(

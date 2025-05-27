@@ -23,16 +23,20 @@ def get_users(db: Session):
     return db.query(User).all()
 
 
-def update_user(db: Session, user_id: int, name: str, email: str, password: str, role: str):
-    user = db.query(User).filter(User.id == user_id).first()
-    if user:
-        user.name = name
-        user.email = email
-        user.password = password
-        user.role = role
+def update_user(db: Session, user_id: int, name: str = None, email: str = None, password: str = None, role: str = None):
+    user_obj = db.query(User).filter(User.id == user_id).first()
+    if user_obj:
+        if name is not None:
+             user_obj.name = name
+        if email is not None:
+             user_obj.email = email
+        if password is not None:
+             user_obj.password = password # В реальном приложении: hash_password(password)
+        if role is not None:
+             user_obj.role = role
         db.commit()
-        db.refresh(user)
-    return user
+        db.refresh(user_obj)
+    return user_obj
 
 
 def delete_user(db: Session, user_id: int):

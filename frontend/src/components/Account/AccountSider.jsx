@@ -1,7 +1,9 @@
+// Импортируем useLocation
+import { useLocation } from "react-router-dom";
 import { UserOutlined, FileSearchOutlined, LogoutOutlined, ToolOutlined } from "@ant-design/icons"
 import { Layout, Typography, Flex } from "antd"
 import { useTRPS } from "../../../context"
-import { useState } from "react"
+import { useState } from "react" // useState уже импортирован в context.jsx, но здесь он тоже используется для useState
 const {Sider} = Layout
 const SiderStyle = {
     backgroundColor: 'rgb(224, 228, 238)',
@@ -11,9 +13,11 @@ const SiderStyle = {
     // padding: '1rem'
 }
 export function AccountSider({currentUser}){
-    const {app, setApp, data, setData, resource, setResource, location} = useTRPS()
+    // Получаем location здесь, а не из контекста
+    const location = useLocation();
+    const {app, setApp, data, setData, resource, setResource} = useTRPS()
     console.log(currentUser);
-    
+
     function handleChooseTab(tab){
         if(tab == 'app'){
             setApp(true)

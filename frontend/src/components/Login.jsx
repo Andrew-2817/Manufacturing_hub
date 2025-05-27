@@ -1,11 +1,11 @@
-import { Layout, Flex } from "antd"
-import { ContextProvider } from "../../context"
-import { LoginHeader } from "./Header"
-import { useEffect, useState } from "react"
-import { useTRPS } from "../../context"
-import { Button } from "./Button"
-import { Link, useNavigate } from "react-router-dom"
-import axios from 'axios'
+import { Layout, Flex } from "antd";
+import { LoginHeader } from "./Header";
+import { useState } from "react";
+import { useTRPS } from "../../context";
+import { Button } from "./Button";
+import { Link, useNavigate } from "react-router-dom";
+import axios from 'axios';
+
 const {Content}  = Layout
 const contentStyle = {
     width: '80%',
@@ -16,110 +16,127 @@ const contentStyle = {
 const layoutStyle = {
     minHeight: "100vh"
 }
+
 export function Login(){
-    const [regform, setRegform] = useState(true)
-    const [enterform, setEnterform] = useState(false)
-    const navigate = useNavigate(); // Хук для навигации
-    const [formData, setFormData] = useState({
+    const [regform, setRegform] = useState(true);
+    const [enterform, setEnterform] = useState(false);
+    const navigate = useNavigate();
+
+    const context = useTRPS();
+    const { setCurrentUser } = context; // Теперь setCurrentUser точно функция, т.к. ContextProvider оборачивает RouterProvider
+
+    // Состояние для формы регистрации
+    const [regFormData, setRegFormData] = useState({
         username: '',
         email: '',
         password: '',
         checkPassword: ''
       });
+
+    // Состояние для формы входа
     const [enterFormData, setEnterFormData] = useState({
         email: '',
         password: '',
     });
-    const [error, setError] = useState('')
-    
-      const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+
+    const [error, setError] = useState('');
+
+    const handleRegChange = (e) => {
+        setRegFormData({ ...regFormData, [e.target.name]: e.target.value });
       };
-      const handleEnterChange = (e) => {
+
+    const handleEnterChange = (e) => {
         setEnterFormData({ ...enterFormData, [e.target.name]: e.target.value });
       };
-    
-      const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError(''); // Сбрасываем ошибку перед отправкой
-        try {
-           // Проверяем, существует ли пользователь с таким email
-        const response = await axios.get('http://localhost:3001/users', {
-            params: {
-            email: formData.email,
-            },
-        });
-        if (formData.email==='' || formData.username === '' || formData.password === '' || formData.checkPassword === ''){
-            setError('Заполните все поля')
-            return
-        }
 
-        if (formData.password !== formData.checkPassword){
-            setError('Пароли не совпадают')
-            return
-        }
-        if (response.data.length > 0) {
-            // Если email уже существует
-            setError('Пользователь с таким email уже зарегистрирован. Попробуйте войти');
+    const handleRegSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        if (regFormData.email === '' || regFormData.username === '' || regFormData.password === '' || regFormData.checkPassword === ''){
+            setError('Заполните все поля');
             return;
         }
-        if (formData.password.length <8){
-            setError('Пароль должен содержать минимум 8 символов')
-            return
+        if (regFormData.password !== regFormData.checkPassword){
+            setError('Пароли не совпадают');
+            return;
+        }
+        if (regFormData.password.length < 8){
+            setError('Пароль должен содержать минимум 8 символов');
+            return;
         }
 
+        try {
+            const userDataToRegister = {
+                name: regFormData.username,
+                email: regFormData.email,
+                password: regFormData.password,
+                role: 'user'
+            };
+            const registerResponse = await axios.post('http://localhost:8000/users/', userDataToRegister);
+            console.log('User registered:', registerResponse.data);
 
-        console.log(formData)
-        const registerResponse = await axios.post('http://localhost:3001/users', formData);
-        await axios.put('http://localhost:3001/currentUser', registerResponse.data)
-        console.log('User registered:', registerResponse.data);
-        alert('Registration successful!');
-        navigate('/user')
+            alert('Регистрация успешна! Теперь войдите в систему.');
+            setRegFormData({
+                username: '',
+                email: '',
+                password: '',
+                checkPassword: ''
+            });
+            handleChangeForm('enter');
+
         } catch (error) {
-        console.error('Error registering user:', error);
-        alert('Registration failed!');
+            console.error('Error registering user:', error);
+            if (error.response && error.response.data && error.response.data.detail) {
+                setError(error.response.data.detail);
+            } else {
+                 setError('Ошибка регистрации. Попробуйте позже.');
+            }
         }
       };
+
       const handleEnterSubmit = async (e) => {
         e.preventDefault();
-        setError(''); // Сбрасываем ошибку перед отправкой
+        setError('');
+
+        if (enterFormData.email === '' || enterFormData.password === ''){
+            setError('Заполните все поля');
+            return;
+        }
+
         try {
-        // Проверяем, существует ли пользователь с таким email
-        const response = await axios.get('http://localhost:3001/users', {
-            params: {
-            email: enterFormData.email,
-            },
-        });
-        console.log(response.data);
-        
-          
-        if (enterFormData.email==='' || enterFormData.password === ''){
-            setError('Заполните все поля')
-            return
-        }
-        if (!response.data.length >0) {
-            setError('Неправильный логин')
-            return
-        }
-        if (response.data[0]['password'] !== enterFormData.password) {
-            setError('Неправильный пароль')
-            return
-        }
-        await axios.put('http://localhost:3001/currentUser', response.data[0])
-        navigate('/user')
-        alert('Enter successful!');
+            const loginResponse = await axios.post('http://localhost:8000/users/login/', enterFormData);
+            console.log('Login successful:', loginResponse.data);
+
+            // Устанавливаем данные пользователя в контекст
+            setCurrentUser(loginResponse.data);
+
+            // Сохраняем ID и роль пользователя в localStorage для запоминания
+            // НЕ СОХРАНЯЙТЕ ПАРОЛЬ В localStorage!
+            localStorage.setItem('currentUserData', JSON.stringify({ id: loginResponse.data.id, role: loginResponse.data.role }));
+
+            // ИЗМЕНЕНО: Редирект на ГЛАВНУЮ страницу пользователя
+            navigate('/user');
+            alert('Вход выполнен успешно!');
+
         } catch (error) {
-        console.error('Error registering user:', error);
-        alert('Registration failed!');
+            console.error('Error logging in:', error);
+            if (error.response && error.response.data && error.response.data.detail) {
+                setError(error.response.data.detail);
+            } else {
+                setError('Ошибка входа. Проверьте почту и пароль.');
+            }
         }
       };
+
     function handleChangeForm(form){
-        if (form == 'enter'){
-            setEnterform(true)
-            setRegform(false)
+        setError('');
+        if (form === 'enter'){
+            setEnterform(true);
+            setRegform(false);
         } else {
-            setRegform(true)
-            setEnterform(false)
+            setRegform(true);
+            setEnterform(false);
         }
     }
 
@@ -131,83 +148,100 @@ export function Login(){
                         <img style={{borderRadius: '15px', boxShadow: "0px 0px 35px 10px rgba(34, 60, 80, 0.5)", width: '50%'}}  src="https://avatars.mds.yandex.net/i?id=318c568c97a871c6417d00c532125777_l-5248286-images-thumbs&n=13" alt="" />
                         <div style={{width: '35%', height: '80vh', marginRight: "0%"}} className="">
                             <Flex justify="space-evenly" style={{margin: "20px 0", width: '90%'}}>
-                                <Button onClick={() => handleChangeForm('enter')} isActive = {enterform}>Войти</Button>
-                                <Button onClick={() => handleChangeForm('reg')} isActive = {regform}>Регистрация</Button>
+                                <Button onClick={() => handleChangeForm('enter')} isActive={enterform}>Войти</Button>
+                                <Button onClick={() => handleChangeForm('reg')} isActive={regform}>Регистрация</Button>
                             </Flex>
-                            {enterform && <form onSubmit={handleEnterSubmit} className="enter_form">
-                                <h5 className="enter_par">Вход</h5>
-                                <div className="input_box">
-                                    <input 
-                                        value={enterFormData.email}
-                                        onChange={handleEnterChange}
-                                        name="email"
-                                        className="log_inp1" 
-                                        type="email"/>
-                                    <label htmlFor="">Логин:</label>
-                                </div>
-                                <div className="input_box">
-                                    <input
-                                        value={enterFormData.password}
-                                        name="password"
-                                        onChange={handleEnterChange}
-                                        className="log_inp2" 
-                                        type="password"/>
-                                    <label htmlFor="">Пароль:</label>
-                                </div>
-                                <h5 className="for_display_errors2"></h5>
-                                <div className="login_register">
-                                    <div className="register_now_element">
+
+                            {enterform && (
+                                <form onSubmit={handleEnterSubmit} className="enter_form">
+                                    <h5 className="enter_par">Вход</h5>
+                                    <div className="input_box">
+                                        <input
+                                            value={enterFormData.email}
+                                            onChange={handleEnterChange}
+                                            name="email"
+                                            className="log_inp1"
+                                            type="email"
+                                            required
+                                        />
+                                        <label htmlFor="">Логин:</label>
+                                    </div>
+                                    <div className="input_box">
+                                        <input
+                                            value={enterFormData.password}
+                                            name="password"
+                                            onChange={handleEnterChange}
+                                            className="log_inp2"
+                                            type="password"
+                                            required
+                                        />
+                                        <label htmlFor="">Пароль:</label>
+                                    </div>
+                                    <p style={{margin: '10px 0', color: '#f34848'}} className="for_display_errors">{error}</p>
+                                    <div className="login_register">
                                         <h4>Нет аккаунта?</h4>
                                         <p style={{cursor: 'pointer'}} onClick={() => handleChangeForm('reg')}>зарегистрироваться</p>
                                     </div>
-                                    <p style={{margin: '10px 0'}} className="for_display_errors">{error}</p>
                                     <button type="submit" className="log_in_click">Войти</button>
-                                </div>
-                            </form>}
-                        {regform && <form onSubmit={handleSubmit} className="reg_form">
-                                <h5 className="reg_par">Регистрация</h5>
-                                <div className="input_box">
-                                    <input
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        name="email" 
-                                        className="reg_inp_password"  
-                                        type="email"/>
-                                    <label htmlFor="">Логин:</label>
-                                </div>
-                                <div className="input_box">
-                                    <input
-                                        value={formData.username}
-                                        onChange={handleChange}
-                                        name="username" 
-                                        className="reg_inp_password" 
-                                        type="text"/>
-                                    <label htmlFor="">Имя:</label>
-                                </div>
-                                <div className="input_box">
-                                    <input
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        name="password" 
-                                        className="reg_inp_password" 
-                                        type="password"/>
-                                    <label htmlFor="">Пароль:</label>
-                                </div>
-                                <div className="input_box">
-                                    <input
-                                        value={formData.checkPassword}
-                                        onChange={handleChange}
-                                        name="checkPassword" 
-                                        className="reg_inp_password"  
-                                        type="password"/>
-                                    <label htmlFor="">Повторить пароль:</label>
-                                </div>
-                                <p className="for_display_errors">{error}</p>
-                                <button  type="submit" className="reg_in_click">Зарегистрироваться</button>
-                            </form>}
+                                </form>
+                            )}
+
+                        {regform && (
+                                <form onSubmit={handleRegSubmit} className="reg_form">
+                                    <h5 className="reg_par">Регистрация</h5>
+                                    <div className="input_box">
+                                        <input
+                                            value={regFormData.email}
+                                            onChange={handleRegChange}
+                                            name="email"
+                                            className="reg_inp_password"
+                                            type="email"
+                                            required
+                                        />
+                                        <label htmlFor="">Логин:</label>
+                                    </div>
+                                    <div className="input_box">
+                                        <input
+                                            value={regFormData.username}
+                                            onChange={handleRegChange}
+                                            name="username"
+                                            className="reg_inp_password"
+                                            type="text"
+                                            required
+                                        />
+                                        <label htmlFor="">Имя:</label>
+                                    </div>
+                                    <div className="input_box">
+                                        <input
+                                            value={regFormData.password}
+                                            onChange={handleRegChange}
+                                            name="password"
+                                            className="reg_inp_password"
+                                            type="password"
+                                            required
+                                            minLength={8}
+                                        />
+                                        <label htmlFor="">Пароль:</label>
+                                    </div>
+                                    <div className="input_box">
+                                        <input
+                                            value={regFormData.checkPassword}
+                                            onChange={handleRegChange}
+                                            name="checkPassword"
+                                            className="reg_inp_password"
+                                            type="password"
+                                            required
+                                            minLength={8}
+                                        />
+                                        <label htmlFor="">Повторить пароль:</label>
+                                    </div>
+                                    <p style={{color: '#f34848'}} className="for_display_errors">{error}</p>
+                                    <button type="submit" className="reg_in_click">Зарегистрироваться</button>
+                                </form>
+                            )}
                         </div>
                     </Flex>
                 </Content>
             </Layout>
-    )
+    );
 }

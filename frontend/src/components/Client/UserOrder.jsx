@@ -1,157 +1,235 @@
-import { Layout, ConfigProvider, Drawer, Space, Select } from "antd"
-import { Upload, message } from 'antd';
+import { Layout, ConfigProvider, Drawer, Space, Select, Input, Typography, message, Upload } from "antd"; // Импортируем message
 import { UploadOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { useTRPS } from "../../../context";
-import { useState, useRef } from "react";
-// sent_for_evaluation accepted_evaluation evaluated paid_for accepted_manufacture produced sent
-export function UserOrder({selectedNumber, isOpen, onClose}){
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom"; // Импортируем Link для сообщения неавторизованным
+
+export function UserOrder({ selectedNumber, isOpen, onClose }) {
     const [select, setSelect] = useState('');
-    const {currentUser, location} = useTRPS()
+    const { currentUser } = useTRPS();
+
     const [formData, setFormData] = useState({
         email: '',
         description: '',
-      });
+    });
+
     const [file, setFile] = useState(null);
+    const [error, setError] = useState('');
 
-    // создаем заявку для пользователя и добавляем в БД
-    async function handleSubmit(e) {
-        const resData = {
-            OrderId: selectedNumber,
-            userId: currentUser.id,
-            email: formData.email,
-            file: file,
-            description: formData.description,
-            deadline: select,
-            status: 'sent_for_evaluation',
-            paidFor: 0
+    useEffect(() => {
+        // console.log("UserOrder useEffect: currentUser changed or Drawer opened", { currentUser, isOpen });
+        if (isOpen) {
+             setFormData({
+                 email: currentUser?.email || '',
+                 description: '',
+             });
+             setSelect('');
+             setFile(null);
+             setError('');
         }
+        // console.log("UserOrder useEffect - formData.email:", formData.email);
+        // console.log("UserOrder useEffect - isEmailFieldDisabled:", !!currentUser && !!currentUser?.email);
 
-        try {
+    }, [currentUser, isOpen]);
 
-            const response = await axios.post("http://localhost:3001/userApps", resData)
-            console.log(response)
-            HandleCloseDrawer()
-            setFormData({
-                email: '',
-                description: '',
-              })
-            console.log(selectedNumber);
-            
-            alert('Заявка успешно создана!')
-            
-        } catch (error) {
-            console.error('Error registering user:', error);
-            alert('Ошибка');
-        }
-    }
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
-    function HandleCloseDrawer(){
-        setFormData({
-            email: '',
-            description: '',
-        })
-        setSelect('')
-        setFile(null)
+
+    async function handleSubmit(e) {
+        e.preventDefault();
+        setError('');
+
+        // console.log("handleSubmit: currentUser:", currentUser);
+
+        if (!currentUser) {
+             setError('Для оформления заказа необходимо войти в аккаунт.');
+             // Возможно, здесь лучше сразу закрыть Drawer или перенаправить на логин,
+             // но пока оставим сообщение об ошибке в форме.
+             return;
+        }
+
+        if (!formData.email || !formData.description || !select || !file || selectedNumber === null) {
+             setError('Пожалуйста, заполните все обязательные поля и выберите файл.');
+             return;
+        }
+
+        const formDataToSend = new FormData();
+        formDataToSend.append('user_order_id', currentUser.id);
+        formDataToSend.append('order_number', selectedNumber);
+        formDataToSend.append('email', formData.email);
+        formDataToSend.append('description', formData.description);
+        formDataToSend.append('deadline', select);
+        formDataToSend.append('file', file);
+
+        formDataToSend.append('geoip_lat', 55.7522);
+        formDataToSend.append('geoip_lon', 37.6156);
+
+        try {
+            const response = await axios.post("http://localhost:8000/orders/create_with_file/", formDataToSend, {
+                 headers: {
+                    'Content-Type': 'multipart/form-data',
+                 },
+            });
+            console.log("Order created:", response.data);
+
+            // УВЕДОМЛЕНИЕ ОБ УСПЕХЕ
+            message.success('Заявка успешно создана!');
+
+            HandleCloseDrawer();
+
+        } catch (error) {
+            console.error('Error creating order:', error);
+            // УВЕДОМЛЕНИЕ ОБ ОШИБКЕ
+            let errorMessage = 'Ошибка при создании заявки. Попробуйте позже.';
+            if (error.response && error.response.data && error.response.data.detail) {
+                errorMessage = `Ошибка: ${error.response.data.detail}`;
+                // Также устанавливаем ошибку в состояние формы, если это релевантно
+                setError(error.response.data.detail);
+            } else {
+                 setError(errorMessage); // Устанавливаем общую ошибку в состояние формы
+            }
+             message.error(errorMessage); // Показываем всплывающее уведомление об ошибке
+        }
     }
-    function handleSelectChange(value){
-        setSelect(value)
+
+    function HandleCloseDrawer() {
+        onClose();
     }
+
+    function handleSelectChange(value) {
+        setSelect(value);
+    }
+
     const beforeUpload = (file) => {
         const isPdfOrDocx =
-        file.type === 'application/pdf' ||
-        file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    
+            file.type === 'application/pdf' ||
+            file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
         if (!isPdfOrDocx) {
-        message.error('Вы можете загружать только файлы в формате PDF или DOCX!');
+            message.error('Вы можете загружать только файлы в формате PDF или DOCX!');
+            return Upload.LIST_IGNORE;
         } else {
-        setFile(file);
-        message.success('Файл успешно выбран.');
+            setFile(file);
+            message.success(`Файл "${file.name}" выбран.`);
+            return false;
         }
-    
-        // Возвращаем false, чтобы файл не был автоматически загружен
-        return false;
     };
-    return(
+
+    const isEmailFieldDisabled = !!currentUser && !!currentUser?.email;
+
+    return (
         <Drawer
             title="Оформление заявки"
-            // placement="right"
+            placement="right"
             destroyOnClose
             closable={true}
-            onClose={onClose}
+            onClose={HandleCloseDrawer}
             open={isOpen}
             width={450}
-            // getContainer={false}
         >
-            <form onSubmit={handleSubmit} className="enter_form">
-                <h5 className="enter_par">Оформление заявки</h5>
-                <div style={{marginBottom: 20}} className="input_box">
-                    <input
-                        value={formData.email}
-                        onChange={handleChange}
-                        name="email"
-                        className="log_inp1" 
-                        type="email"/>
-                    <label htmlFor="">Почта:</label>
-                </div>
-                <div className="input_box">
-                    <textarea 
-                        value={formData.description} 
-                        name="description"
-                        onChange={handleChange} 
-                        className="log_inp1" 
-                        type="text"/>
-                    <label htmlFor="">Описание:</label>
-                </div>
-                <div>
-                <Upload
-                    beforeUpload={beforeUpload}
-                    accept=".pdf,.docx"
-                    maxCount={1}
-                    onRemove={() => setFile(null)}
-                    style={{marginLeft: '10%'}}
-                >
-                    <button type="button" className="upload_img_button" icon={<UploadOutlined />}>Выберите файл</button>
-                </Upload>
-                </div>
-                <ConfigProvider
-                    theme={{
-                        components: {
-                        Select: {
-                            activeBorderColor: '#e2b932',
-                            hoverBorderColor: '#e2b932'
-                        },
-                        },
-                    }}
-                    >
-                    <Select
-                        defaultValue="Сроки изготовления"
+            {selectedNumber !== null && (
+                <Typography.Title level={4} style={{ marginBottom: 20, textAlign: 'center' }}>
+                    Заявка №{selectedNumber}
+                </Typography.Title>
+            )}
 
-                        style={{
-                            width: "90%",
-                            margin: "20px 0"
+            {!currentUser && (
+                 <Typography.Text type="danger" style={{display: 'block', marginBottom: 20, textAlign: 'center'}}>
+                    Для оформления заказа необходимо <Link to="/login">войти</Link> или <Link to="/login">зарегистрироваться</Link>.
+                </Typography.Text>
+            )}
+
+            {currentUser && (
+                <form onSubmit={handleSubmit} style={{border: 'none', padding: 0}}>
+                     <div style={{ marginBottom: 20 }} className="input_box">
+                        <input
+                            value={formData.email}
+                            onChange={handleChange}
+                            name="email"
+                            className="log_inp1"
+                            type="email"
+                            required
+                            disabled={isEmailFieldDisabled}
+                            placeholder=" "
+                        />
+                        <label htmlFor="">Почта:</label>
+                    </div>
+                    <div className="input_box">
+                        <textarea
+                            value={formData.description}
+                            name="description"
+                            onChange={handleChange}
+                            className="log_inp1"
+                            required
+                            placeholder=" "
+                        />
+                        <label htmlFor="">Описание:</label>
+                    </div>
+                    <div style={{marginBottom: 20}}>
+                        <Upload
+                            beforeUpload={beforeUpload}
+                            accept=".pdf,.docx"
+                            maxCount={1}
+                            onRemove={() => setFile(null)}
+                            fileList={file ? [
+                                // Форматируем объект файла для Ant Design Upload.FileList
+                                {
+                                    uid: file.uid || '-1', // Уникальный ID файла (Ant Design генерирует свой, можно использовать его)
+                                    name: file.name, // Имя файла
+                                    status: 'done', // Статус отображения в списке (done, uploading, error)
+                                    originFileObj: file, // Сам объект файла
+                                }
+                            ] : []}
+                            disabled={!!file}
+                        >
+                            <button type="button" className="upload_img_button" disabled={!!file}>
+                                {file ? "Файл выбран" : "Выберите файл (PDF или DOCX)"}
+                            </button>
+                        </Upload>
+                    </div>
+
+                    <ConfigProvider
+                        theme={{
+                            components: {
+                                Select: {
+                                    activeBorderColor: '#e2b932',
+                                    hoverBorderColor: '#e2b932',
+                                    optionSelectedBg: '#fff1d8'
+                                },
+                            },
                         }}
-                        size="large"
-                        onChange={handleSelectChange}
-                        options={[
-                            {value: 'Как можно скорее'},
-                            {value: 'В течение недели'},
-                            {value: 'В течение месяца'},
-                            {value: 'Планирую на будующее'}
-                        ]}
-                        optionRender={(option) => (
-                            <Space>
-                            {option.data.value}
-                            </Space>
-                        )}
-                    />
-                </ConfigProvider>
-                <h5 className="for_display_errors2"></h5>
-                <button style={{padding: '0.8rem 1rem',fontSize:20 }} onClick={onClose} type="submit" className="log_in_click">Отправить</button>
+                    >
+                        <Select
+                            placeholder="Сроки изготовления"
+                            value={select || undefined}
+                            style={{
+                                width: "100%",
+                                margin: "20px 0"
+                            }}
+                            size="large"
+                            onChange={handleSelectChange}
+                            options={[
+                                { value: 'Как можно скорее', label: 'Как можно скорее' },
+                                { value: 'В течение недели', label: 'В течение недели' },
+                                { value: 'В течение месяца', label: 'В течение месяца' },
+                                { value: 'Планирую на будующее', label: 'Планирую на будующее' }
+                            ]}
+                        />
+                    </ConfigProvider>
 
-            </form>
+                    {error && <Typography.Text type="danger" style={{ display: 'block', marginBottom: 10 }}>{error}</Typography.Text>}
+
+                    <button
+                        style={{ padding: '0.8rem 1rem', fontSize: 20 }}
+                        type="submit"
+                        className="log_in_click"
+                    >
+                        Отправить
+                    </button>
+                </form>
+            )}
         </Drawer>
-    )
+    );
 }

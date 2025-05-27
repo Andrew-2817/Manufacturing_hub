@@ -24,7 +24,7 @@ a:hover{
     /* border-right: 1.7px solid #e79e30; */
     border-radius: 10px;
     z-index: 100;
-    transform-origin: 1 1;   
+    transform-origin: 1 1;
     transition: all ease .5s;
     backdrop-filter: blur(8px);
     padding: 4.5%;
@@ -39,7 +39,7 @@ a:hover{
     border-radius: 10px;
     z-index: 100;
     transition: all ease .5s;
-    transform-origin: 1 1;   
+    transform-origin: 1 1;
     backdrop-filter: blur(8px);
     padding: 5%;
     width: 90%;
@@ -48,7 +48,7 @@ a:hover{
     backdrop-filter: blur(6px);
 }
 .enter_par, .reg_par{
-    color:rgb(88, 88, 88); 
+    color:rgb(88, 88, 88);
     text-align: center;
     margin-top: 2%;
     font-size: 25px;
@@ -134,7 +134,7 @@ a:hover{
     width: 100%;
 }
 .log_in_click, .reg_in_click{
-    color: rgb(88, 88, 88); 
+    color: rgb(88, 88, 88);
     /* width: 90%; */
     padding: 2% 4%;
     border-radius: 10px;
@@ -157,7 +157,7 @@ a:hover{
     justify-content: space-between;
     margin-top: 5%;
     font-size: 16px;
-    color:#676767;    
+    color:#676767;
 }
 .register_now_element p{
     color:#e2b932;
