@@ -1,39 +1,51 @@
 import { useState, useEffect } from "react";
-import { Drawer, Typography, Card, Steps, Flex, ConfigProvider, message, Input, Tag } from "antd";
-import { Button } from "../../Button"; // Импортируем Button
+// ИЗМЕНЕНО: Импортируем InputNumber, а не просто Input
+import { Drawer, Typography, Card, Steps, Flex, ConfigProvider, message, Input, Tag, Select, Space, Form, InputNumber } from "antd";
+import { Button } from "../../Button"; // Импортируем иконки для Form.List
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons"; // Импортируем иконки для Form.List
+import axios from "axios"; // axios нужен для получения и отправки ресурсов
 
 // Импортируем изображения
 import app_reject from '../../../assets/app_reject.jpg';
 import completed from '../../../assets/completed.jpg';
 import evaluation from '../../../assets/evaluation.jpg';
 import accept from '../../../assets/accept.jpg';
-// Изображения production и sent используются у исполнителя, здесь не нужны для логики отдела
-// import production from '../../../assets/production.jpg';
-// import sent from '../../../assets/sent.jpg';
 
 
 // Определяем шаги для отображения статусов в Steps для отдела
 const DEPARTMENT_STEPS = [
     {
         title: 'Принята отделом',
-        content: accept, // Изображение для статуса 'accepted_evaluation'
-        status: 'accepted_evaluation', // Соответствующий статус в БД
+        content: accept,
+        status: 'accepted_evaluation',
     },
     {
         title: 'На оценке',
-        content: evaluation, // Изображение для статуса 'evaluated'
+        content: evaluation,
         status: 'evaluated',
     },
 ];
 
-// Определяем статусы, которые считаются "завершенными" для отображения картинки "completed"
 const COMPLETED_STATUSES = ['evaluated', 'paid_for', 'accepted_production', 'produced', 'sent'];
 const REJECTED_STATUS = 'reject';
 
+// Опции для выбора типа ресурса (можно загружать с бэкенда в будущем)
+const RESOURCE_TYPES_OPTIONS = [
+    { value: 'Токарный станок', label: 'Токарный станок' },
+    { value: 'Фрезерный станок', label: 'Фрезерный станок' },
+    { value: 'Сверлильный станок', label: 'Сверлильный станок' },
+    { value: 'Шлифовальный станок', label: 'Шлифовальный станок' },
+    { value: 'Гидравлический пресс', label: 'Гидравлический пресс' },
+    { value: 'Лазерная резка', label: 'Лазерная резка' },
+    { value: 'Сварочное оборудование', label: 'Сварочное оборудование' },
+    { value: 'Покрасочная камера', label: 'Покрасочная камера' },
+];
+
 
 export function DepartmentApplicationCard({ app, onUpdate }) {
-    const [drawer, setDrawer] = useState(false);
-    const [drawerPrice, setDrawerPrice] = useState(false);
+    const [drawer, setDrawer] = useState(false); // Drawer для отклонения
+    const [drawerPrice, setDrawerPrice] = useState(false); // Drawer для установки цены
+    const [drawerResources, setDrawerResources] = useState(false); // НОВОЕ: Drawer для управления ресурсами
     const [currentStep, setCurrentStep] = useState(0);
     const [inputRejectReason, setInputRejectReason] = useState('');
     const [inputRejectError, setInputRejectError] = useState('');
@@ -41,8 +53,8 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
     const [inputPriceError, setInputPriceError] = useState('');
     const [isPriceSet, setIsPriceSet] = useState(false);
 
+    const [resourceForm] = Form.useForm(); // Форма для ресурсов
 
-    // Effect для определения текущего шага Steps на основе статуса заявки
     useEffect(() => {
         console.log("DepartmentApplicationCard useEffect: app status or price changed", { status: app.status, price: app.price });
 
@@ -62,7 +74,53 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
         }
     }, [app.status, app.price]);
 
-    // Обработчик перехода к следующему статусу
+    // Загрузка ресурсов для текущего заказа (при открытии Drawer)
+    async function fetchOrderResources() {
+        try {
+            const response = await axios.get(`http://localhost:8000/order-resources/for-order/${app.id}`);
+            if (response.data) {
+                // Устанавливаем полученные ресурсы в форму для редактирования
+                resourceForm.setFieldsValue({ resources: response.data });
+                console.log("Fetched resources for order:", response.data);
+            } else {
+                resourceForm.setFieldsValue({ resources: [] });
+                console.log("No resources found for order.");
+            }
+        } catch (error) {
+            console.error('Error fetching order resources:', error);
+            message.error('Не удалось загрузить ресурсы для заказа.');
+            resourceForm.setFieldsValue({ resources: [] });
+        }
+    }
+
+    // Сохранение ресурсов для заказа
+    async function handleSaveResources(values) {
+        console.log("handleSaveResources: Function triggered!"); // <-- НОВЫЙ ЛОГ
+        console.log("handleSaveResources: Form values on submit:", values);
+
+        if (!values.resources || values.resources.length === 0) {
+            message.warning("Необходимо добавить хотя бы один ресурс.");
+            return;
+        }
+
+        try {
+            const response = await axios.post(`http://localhost:8000/order-resources/for-order/${app.id}/bulk`, {
+                resources: values.resources
+            });
+            console.log("Resources saved:", response.data);
+            message.success('Ресурсы успешно обновлены!');
+            setDrawerResources(false);
+        } catch (error) {
+            console.error('Error saving resources:', error);
+            let errorMessage = 'Не удалось сохранить ресурсы.';
+            if (error.response && error.response.data && error.response.data.detail) {
+                errorMessage = `Ошибка: ${error.response.data.detail}`;
+            }
+            message.error(errorMessage);
+        }
+    }
+
+
     async function handleNextStatus() {
         const currentStatus = app.status;
         console.log("handleNextStatus: currentStatus", currentStatus);
@@ -70,10 +128,8 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
         let newStatus = null;
 
         if (currentStatus === 'sent_for_evaluation') {
-            // Из "новой" переходим в "принята отделом"
             newStatus = 'accepted_evaluation';
         } else if (currentStatus === 'accepted_evaluation') {
-            // Принята отделом -> На оценке (статус 'evaluated')
             newStatus = 'evaluated';
             if (!isPriceSet) {
                 message.warning('Для завершения оценки необходимо установить стоимость.');
@@ -93,7 +149,6 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
         }
     }
 
-    // Обработчик перехода к предыдущему статусу
     async function handlePrevStatus() {
          const currentStatus = app.status;
 
@@ -111,7 +166,6 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
         await onUpdate(app.id, { status: newStatus });
     }
 
-    // Обработчик отклонения заявки
     async function handleRejectApplication() {
         if (inputRejectReason.trim() !== '') {
             setInputRejectError('');
@@ -123,7 +177,6 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
         }
     }
 
-    // Обработчик подтверждения оценки цены
     async function handleEvaluatePrice() {
         const priceValue = parseFloat(inputPrice);
         if (!isNaN(priceValue) && priceValue >= 0) {
@@ -135,22 +188,20 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
         }
     }
 
-    // ИЗМЕНЕНО: Helper function to get the image for the current status
     const getStatusImage = (status) => {
         if (status === REJECTED_STATUS) {
-            return app_reject;
+             return app_reject;
         }
-        if (status === 'sent_for_evaluation') { // ДОБАВЛЕНО: для статуса "Новая"
-            return accept; // Используем изображение "Принято", или можно добавить отдельное изображение
+        if (status === 'sent_for_evaluation') {
+            return accept;
         }
         if (COMPLETED_STATUSES.includes(status)) {
-            return completed;
+             return completed;
         }
         const step = DEPARTMENT_STEPS.find(step => step.status === status);
         return step ? step.content : null;
     }
 
-    // Определяем, отображать ли Steps и кнопки управления статусом для отдела
     const showOnlySteps = app.status === 'accepted_evaluation' || app.status === 'evaluated';
 
 
@@ -164,9 +215,9 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
                 {app.status === 'sent_for_evaluation' && <Typography.Title style={{margin:0, fontWeight:400, color: 'orange'}} level={4}>Новая</Typography.Title>}
                 {app.status === 'accepted_evaluation' && <Typography.Title style={{margin:0, fontWeight:400, color: 'blue'}} level={4}>Оценивается</Typography.Title>}
                 {app.status === 'evaluated' && <Typography.Title style={{margin:0, fontWeight:400, color: 'green'}} level={4}>Оценена</Typography.Title>}
-                {COMPLETED_STATUSES.includes(app.status) && app.status !== 'evaluated' && (
-                    <Typography.Title style={{margin:0, fontWeight:400, color: 'green'}} level={4}>Передана в производство</Typography.Title>
-                )}
+                 {COMPLETED_STATUSES.includes(app.status) && app.status !== 'evaluated' && (
+                     <Typography.Title style={{margin:0, fontWeight:400, color: 'green'}} level={4}>Передана в производство</Typography.Title>
+                 )}
             </Flex>
 
             <ConfigProvider
@@ -189,7 +240,7 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
                         }))}
                         current={DEPARTMENT_STEPS.findIndex(step => step.status === app.status)}
                     />
-                )}
+                 )}
 
                 <Flex justify="space-between" align="center" style={{margin: '20px 0', padding: '0 10px'}}>
                     <div style={{display: 'flex', flexDirection: 'column', gap:5}}>
@@ -200,7 +251,7 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
                             <span style={{fontWeight: 600}}>Файл: </span>
                             {app?.file_path ? (
                                 <a href={`http://localhost:8000/${app.file_path}`} target="_blank" rel="noopener noreferrer">
-                                    <Typography.Text>{app.file_path.split('/').pop()}</Typography.Text>
+                                     <Typography.Text>{app.file_path.split('/').pop()}</Typography.Text>
                                 </a>
                             ) : (
                                 <Typography.Text type="secondary">Файл не загружен</Typography.Text>
@@ -289,6 +340,20 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
                           Предыдущий шаг
                       </Button>
                   )}
+
+                {(app.status === 'accepted_evaluation' || app.status === 'evaluated') && (
+                    <Button
+                        onClick={() => {
+                            setDrawerResources(true);
+                            resourceForm.resetFields(); // Сбрасываем форму перед загрузкой новых данных
+                            fetchOrderResources(); // Загружаем ресурсы при открытии Drawer
+                        }}
+                        style={{padding: '0.5rem 1rem', borderRadius: 10}}
+                    >
+                        Указать ресурсы
+                    </Button>
+                )}
+
             </Flex>
 
             <Drawer
@@ -358,6 +423,90 @@ export function DepartmentApplicationCard({ app, onUpdate }) {
                 </Flex>
                 {inputPriceError && <Typography.Text type="danger" style={{display: 'block', marginTop:10}}>{inputPriceError}</Typography.Text>}
             </Drawer>
+
+            <Drawer
+                title={`Ресурсы для Заказа №${app?.order_number || app?.id}`}
+                placement="right"
+                closable={true}
+                onClose={() => setDrawerResources(false)}
+                open={drawerResources}
+                width={500}
+                bodyStyle={{ paddingBottom: 80 }}
+            >
+                <Form
+                    form={resourceForm}
+                    onFinish={handleSaveResources}
+                    onFinishFailed={(errorInfo) => { // ДОБАВЛЕНО: Логирование ошибок валидации формы
+                        console.error("Form onFinishFailed triggered with errorInfo:", errorInfo);
+                        message.error('ОШИБКА ВАЛИДАЦИИ ФОРМЫ! Проверьте введенные данные и консоль.');
+                    }}
+                    autoComplete="off"
+                    initialValues={{ resources: [] }} // Начальные значения для Form.List
+                >
+                    <Form.List name="resources">
+                        {(fields, { add, remove }) => (
+                            <>
+                                {fields.map(({ key, name, ...restField }) => (
+                                    <Space key={key} style={{ display: 'flex', marginBottom: 8, alignItems: 'center' }} align="baseline">
+                                        <Form.Item
+                                            {...restField}
+                                            name={[name, 'type_resource']}
+                                            rules={[{ required: true, message: 'Выберите тип ресурса!' }]}
+                                            style={{ marginBottom: 0 }}
+                                        >
+                                            <Select
+                                                placeholder="Тип ресурса"
+                                                style={{ width: 180 }}
+                                                options={RESOURCE_TYPES_OPTIONS}
+                                            />
+                                        </Form.Item>
+                                        <Form.Item
+                                            {...restField}
+                                            name={[name, 'resource_count']}
+                                            rules={[
+                                                { required: true, message: 'Укажите количество!' },
+                                                { type: 'number', min: 1, message: 'Минимум 1!' },
+                                            ]}
+                                            style={{ marginBottom: 0 }}
+                                        >
+                                            <InputNumber // Используем InputNumber
+                                                placeholder="Количество"
+                                                min={1} // min проп InputNumber
+                                                style={{ width: 100 }}
+                                            />
+                                        </Form.Item>
+                                        <MinusCircleOutlined onClick={() => remove(name)} style={{ fontSize: 20, color: '#999' }} />
+                                    </Space>
+                                ))}
+                                <Form.Item>
+                                    <Button type="dashed" onClick={() => add({ resource_count: 1 })} block icon={<PlusOutlined />} style={{width: 'auto'}}>
+                                        Добавить ресурс
+                                    </Button>
+                                </Form.Item>
+                            </>
+                        )}
+                    </Form.List>
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            width: '100%',
+                            borderTop: '1px solid #e8e8e8',
+                            padding: '10px 16px',
+                            background: '#fff',
+                            textAlign: 'right',
+                        }}
+                    >
+                        <Button onClick={() => setDrawerResources(false)} style={{ marginRight: 8 }}>
+                            Отмена
+                        </Button>
+                        <Button type="primary" htmlType="submit">
+                            Сохранить ресурсы
+                        </Button>
+                    </div>
+                </Form>
+            </Drawer>
+
         </Card>
     )
 }
