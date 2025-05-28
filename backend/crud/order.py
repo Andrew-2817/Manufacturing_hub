@@ -1,11 +1,37 @@
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
-from backend.database import engine
+from sqlalchemy import func  # Для использования SQL-функций, если нужно
+
+from backend.database import engine  # engine здесь не используется, можно удалить
 from backend.models.order import Order
+from backend.models.manufacture_order import ManufactureOrder  # Импортируем модель связи
+from backend.models.manufacture import Manufacture  # Импортируем модель производителя
+
+
+# Вспомогательная функция для добавления JOIN к запросу заказов
+# Это позволит получать данные о назначенном производителе в одном запросе
+def _get_orders_with_manufacturer_info(db: Session):
+    """
+    Создает базовый запрос к Order, включая LEFT OUTER JOIN с ManufactureOrder и Manufacture,
+    чтобы получить информацию о назначенном производителе.
+    """
+    # LEFT OUTER JOIN используется, потому что не у каждого заказа есть назначенный производитель
+    # (пока заказ не оплачен и не назначен)
+    query = db.query(
+        Order,
+        ManufactureOrder,  # Включаем модель связи
+        Manufacture  # Включаем модель производителя
+    ).outerjoin(
+        ManufactureOrder, Order.id == ManufactureOrder.order_id
+    ).outerjoin(
+        Manufacture, ManufactureOrder.manufacture_id == Manufacture.id
+    )
+    return query
 
 
 # Обновляем функцию create_order
-def create_order(db: Session, user_order_id: int, order_number: Optional[int], status: str, geoip_lat: float, geoip_lon: float, comments: Optional[str], price: float, ready_to: bool, file_path: Optional[str]):
+def create_order(db: Session, user_order_id: int, order_number: Optional[int], status: str, geoip_lat: float,
+                 geoip_lon: float, comments: Optional[str], price: float, ready_to: bool, file_path: Optional[str]):
     db_order = Order(
         user_order_id=user_order_id,
         order_number=order_number,
@@ -22,52 +48,83 @@ def create_order(db: Session, user_order_id: int, order_number: Optional[int], s
     db.refresh(db_order)
     return db_order
 
+
 def get_order_by_id(db: Session, order_id: int):
-    return db.query(Order).filter(Order.id == order_id).first()
+    # Используем базовый запрос с JOIN для получения полной информации, включая производителя
+    result = _get_orders_with_manufacturer_info(db).filter(Order.id == order_id).first()
+    if result:
+        # FastAPI/SQLAlchemy ORM Mode автоматически соберет объект Order
+        # Но для добавления assigned_manufacturer_name/id нужно вручную добавить
+        order_obj, m_order, manufacturer = result
+        if manufacturer:
+            order_obj.assigned_manufacturer_id = manufacturer.id
+            order_obj.assigned_manufacturer_name = manufacturer.name
+        return order_obj
+    return None
+
 
 # Функция для получения заказов пользователя по user_id
-def get_orders_by_user_id(db: Session, user_id: int):
-    return db.query(Order).filter(Order.user_order_id == user_id).all()
+def get_orders_by_user_id(db: Session, user_id: int) -> List[Order]:
+    # Используем базовый запрос с JOIN
+    results = _get_orders_with_manufacturer_info(db).filter(Order.user_order_id == user_id).all()
+    # Обрабатываем результаты, чтобы добавить информацию о производителе к каждому объекту Order
+    orders_list = []
+    for order_obj, m_order, manufacturer in results:
+        if manufacturer:
+            order_obj.assigned_manufacturer_id = manufacturer.id
+            order_obj.assigned_manufacturer_name = manufacturer.name
+        orders_list.append(order_obj)
+    return orders_list
+
 
 # Функция для получения заказов по статусам (для отдела)
-def get_orders_by_statuses(db: Session, statuses: Optional[List[str]] = None):
-    query = db.query(Order)
-    print(f"DEBUG: get_orders_by_statuses called with statuses: {statuses}") # <-- ДОБАВЛЕН ЛОГ
-    if statuses:
-        # Убедимся, что фильтр корректен, даже если statuses - пустой список
-        if len(statuses) > 0: # Только если список статусов не пустой, применяем фильтр
-            query = query.filter(Order.status.in_(statuses))
-    query = query.order_by(Order.order_number) # Или по Order.id
-    result = query.all()
-    print(f"DEBUG: get_orders_by_statuses returning {len(result)} orders.") # <-- ДОБАВЛЕН ЛОГ
-    # Для отладки, можно распечатать статусы возвращаемых заказов
-    for order_item in result:
-        print(f"DEBUG: Order ID: {order_item.id}, Status: {order_item.status}")
-    return result
-
-# НОВАЯ функция: получить заказы по списку их ID, опционально фильтруя по статусам
-def get_orders_by_ids_and_statuses(db: Session, order_ids: List[int], statuses: Optional[List[str]] = None) -> List[Order]:
-    query = db.query(Order).filter(Order.id.in_(order_ids))
+def get_orders_by_statuses(db: Session, statuses: Optional[List[str]] = None) -> List[Order]:
+    # Используем базовый запрос с JOIN
+    query = _get_orders_with_manufacturer_info(db)
     if statuses:
         if len(statuses) > 0:
             query = query.filter(Order.status.in_(statuses))
-    query = query.order_by(Order.order_number) # Или по Order.id
-    return query.all()
+    query = query.order_by(Order.order_number)
+    results = query.all()
+
+    orders_list = []
+    for order_obj, m_order, manufacturer in results:
+        if manufacturer:
+            order_obj.assigned_manufacturer_id = manufacturer.id
+            order_obj.assigned_manufacturer_name = manufacturer.name
+        orders_list.append(order_obj)
+    return orders_list
 
 
-# НОВАЯ функция для обновления заказа
-# Принимает order_id и словарь с обновляемыми данными (используется в PATCH эндпоинте)
+# Функция для получения заказов по списку их ID, опционально фильтруя по статусам
+def get_orders_by_ids_and_statuses(db: Session, order_ids: List[int], statuses: Optional[List[str]] = None) -> List[
+    Order]:
+    # Используем базовый запрос с JOIN
+    query = _get_orders_with_manufacturer_info(db).filter(Order.id.in_(order_ids))
+    if statuses:
+        if len(statuses) > 0:
+            query = query.filter(Order.status.in_(statuses))
+    query = query.order_by(Order.order_number)
+    results = query.all()
+
+    orders_list = []
+    for order_obj, m_order, manufacturer in results:
+        if manufacturer:
+            order_obj.assigned_manufacturer_id = manufacturer.id
+            order_obj.assigned_manufacturer_name = manufacturer.name
+        orders_list.append(order_obj)
+    return orders_list
+
+
+# НОВАЯ функция для обновления заказа (без изменений)
 def update_order(db: Session, order_id: int, updates: Dict[str, Any]):
     db_order = db.query(Order).filter(Order.id == order_id).first()
     if db_order:
         for key, value in updates.items():
-            # Обновляем только те поля, которые есть в словаре updates
-            # Проверяем наличие атрибута и что значение не None (если хотим пропустить None)
             if hasattr(db_order, key) and value is not None:
-                 # Специальная обработка для price, если оно Numeric в модели
-                 if key == 'price' and value is not None:
-                      db_order.price = float(value) # Приводим к float
-                 else:
+                if key == 'price' and value is not None:
+                    db_order.price = float(value)
+                else:
                     setattr(db_order, key, value)
         db.commit()
         db.refresh(db_order)
@@ -75,10 +132,22 @@ def update_order(db: Session, order_id: int, updates: Dict[str, Any]):
 
 
 def get_orders_geoip_by_id(db: Session, order_id: int):
+    # Эта функция используется в selection.py, ей не нужна информация о производителе
+    # Просто получаем geoip_lat и geoip_lon из Order
     return db.query(Order.geoip_lat, Order.geoip_lon).filter(Order.id == order_id).first()
 
+
 def get_all_orders(db: Session):
-    return db.query(Order).all()
+    # Используем базовый запрос с JOIN
+    results = _get_orders_with_manufacturer_info(db).all()
+    orders_list = []
+    for order_obj, m_order, manufacturer in results:
+        if manufacturer:
+            order_obj.assigned_manufacturer_id = manufacturer.id
+            order_obj.assigned_manufacturer_name = manufacturer.name
+        orders_list.append(order_obj)
+    return orders_list
+
 
 def delete_order(db: Session, order_id: int):
     order_obj = db.query(Order).filter(Order.id == order_id).first()
@@ -86,5 +155,3 @@ def delete_order(db: Session, order_id: int):
         db.delete(order_obj)
         db.commit()
     return order_obj
-
-# print(get_orders_geoip_by_id(Session(bind=engine), 1))

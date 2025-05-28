@@ -16,15 +16,18 @@ class OrderCreate(BaseModel):
 # Существующая схема для возврата полного объекта заказа
 class Order(OrderCreate):
     id: int
+    # НОВЫЕ ПОЛЯ: Добавляем информацию о назначенном производителе
+    assigned_manufacturer_id: Optional[int] = None
+    assigned_manufacturer_name: Optional[str] = None
 
     class Config:
         orm_mode = True
         # В Pydantic v2 'orm_mode' переименован в 'from_attributes'.
         # Если используете Pydantic v2, замените orm_mode = True на from_attributes = True
         # orm_mode = True # <- Если Pydantic v1
-        # from_attributes = True # <- Если Pydantic v2
+        # from_attributes = True # <- Раскомментируйте, если Pydantic v2
 
-# НОВАЯ схема для частичного обновления заказа
+# НОВАЯ схема для частичного обновления заказа (без изменений)
 class OrderUpdate(BaseModel):
     order_number: Optional[int] = None
     status: Optional[str] = None
@@ -34,4 +37,3 @@ class OrderUpdate(BaseModel):
     price: Optional[float] = None
     ready_to: Optional[bool] = None
     file_path: Optional[str] = None
-    # Не включаем user_order_id и id в схему обновления, т.к. они не должны меняться через этот эндпоинт

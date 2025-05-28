@@ -4,8 +4,7 @@ import app_reject from '../../../assets/app_reject.jpg'
 import evaluation from '../../../assets/evaluation.jpg'
 import pay from '../../../assets/pay.jpg'
 import produced from '../../../assets/produced.jpg'
-import production from '../../../assets/production.jpg'
-// Импортируем sent.jpg, если он используется для "отправлено"
+import production from '../../../assets/production.jpg' // Убедитесь, что путь правильный
 import sent from '../../../assets/sent.jpg'; // Убедитесь, что этот файл есть в assets
 
 import {Button} from "../../Button"
@@ -13,11 +12,8 @@ import { BulbFilled } from "@ant-design/icons";
 
 
 export function UserApplicationCardOne({app, onStatusChange}) {
-    // allStatuses отражает шаги для клиента.
-    // 'accepted_evaluation' и 'accepted_production' - это внутренние статусы отделов,
-    // для клиента они агрегируются в "На оценке" и "На производстве".
     const USER_LIFECYCLE_STATUSES = ['sent_for_evaluation', 'evaluated', 'paid_for', 'produced', 'sent'];
-    const [currentStepIndex, setCurrentStepIndex] = useState(0); // Используем другое имя для ясности
+    const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [helpMessage, setHelpMessage] = useState('Заказ отправлен для оценивания');
 
     useEffect(() => {
@@ -29,37 +25,37 @@ export function UserApplicationCardOne({app, onStatusChange}) {
                 newHelpMessage = 'Заказ отправлен для оценивания';
                 newCurrentStepIndex = 0;
                 break;
-            case 'accepted_evaluation': // Внутренний статус отдела, для пользователя - все еще "На оценке"
+            case 'accepted_evaluation':
                 newHelpMessage = 'Заказ уже оценивается технологическим отделом';
-                newCurrentStepIndex = 0; // Для Steps пользователя, это все еще 0-й шаг (Оценка)
+                newCurrentStepIndex = 0;
                 break;
             case 'evaluated':
                 newHelpMessage = 'Оценка прошла успешно, оплатите заказ';
-                newCurrentStepIndex = 1; // 1-й шаг (Оплата)
+                newCurrentStepIndex = 1;
                 break;
             case 'paid_for':
                 newHelpMessage = 'Заказ оплачен и отправлен на производство';
-                newCurrentStepIndex = 2; // 2-й шаг (Производство)
+                newCurrentStepIndex = 2;
                 break;
-            case 'accepted_production': // Внутренний статус производителя, для пользователя - все еще "На производстве"
+            case 'accepted_production':
                 newHelpMessage = 'Заказ находится в производстве';
-                newCurrentStepIndex = 2; // Для Steps пользователя, это все еще 2-й шаг (Производство)
+                newCurrentStepIndex = 2;
                 break;
             case 'produced':
                 newHelpMessage = 'Заказ готов к отправке';
-                newCurrentStepIndex = 3; // 3-й шаг (Отправка)
+                newCurrentStepIndex = 3;
                 break;
             case 'sent':
-                newHelpMessage = ''; // Заказ выполнен, сообщение не нужно
-                newCurrentStepIndex = 4; // 4-й шаг (Завершено)
+                newHelpMessage = '';
+                newCurrentStepIndex = 4;
                 break;
             case 'reject':
-                newHelpMessage = 'Ваш заказ был отклонен.'; // Отдельное сообщение для отклоненных
-                newCurrentStepIndex = -1; // Не отображаем Steps
+                newHelpMessage = 'Ваш заказ был отклонен.';
+                newCurrentStepIndex = -1;
                 break;
             default:
                 newHelpMessage = '';
-                newCurrentStepIndex = -1; // Неизвестный статус
+                newCurrentStepIndex = -1;
         }
 
         setHelpMessage(newHelpMessage);
@@ -67,37 +63,34 @@ export function UserApplicationCardOne({app, onStatusChange}) {
 
     }, [app.status]);
 
-    // Обработчик оплаты
     async function handlePay() {
         if (app.price <= 0) {
             message.warning("Заказ еще не оценен или имеет нулевую стоимость.");
             return;
         }
-        // Вызываем функцию onStatusChange, переданную от родителя, для обновления статуса на бэкенде
         await onStatusChange(app.id, { status: "paid_for" });
     }
 
-    // Определяем шаги для отображения в Steps
     const steps = [
         {
           title: 'Оценка',
-          content: evaluation, // Изображение для оценки
+          content: evaluation,
         },
         {
             title: 'Оплата',
-            content: pay, // Изображение для оплаты
+            content: pay,
           },
           {
             title: 'Производство',
-            content: production, // Изображение для производства
+            content: production,
           },
           {
             title: 'Отправка',
-            content: produced, // Изображение для отправки
+            content: produced,
           },
           {
-            title: 'Завершено', // Добавляем шаг "Завершено"
-            content: sent, // Изображение для завершенных/отправленных
+            title: 'Завершено',
+            content: sent,
           },
     ];
 
@@ -106,24 +99,20 @@ export function UserApplicationCardOne({app, onStatusChange}) {
         title: item.title,
     }));
 
-    // Определяем, когда показывать Steps
     const showSteps = app.status !== 'reject' && app.status !== 'sent';
-    // Определяем, какое изображение показывать
     const getStatusImage = () => {
         if (app.status === 'reject') {
             return app_reject;
         }
         if (app.status === 'sent') {
-            return sent; // Изображение для отправленных/завершенных
+            return sent;
         }
-        // Используем изображение из текущего шага. Если currentStepIndex = -1, то null
         return steps[currentStepIndex]?.content;
     };
 
 
     return (
         <Card style={{width: '100%', marginBottom:20}}>
-
             <Flex justify="space-between" align="center" style={{marginBottom:20}}>
                 <Typography style={{fontSize:22}}>
                     Заказ №<span style={{fontWeight:600}}>{app?.order_number || app?.id}</span>
@@ -146,7 +135,6 @@ export function UserApplicationCardOne({app, onStatusChange}) {
                     },
                 }}
             >
-
                 {showSteps && (
                     <>
                         <Steps
@@ -154,7 +142,6 @@ export function UserApplicationCardOne({app, onStatusChange}) {
                             items={items}
                             current={currentStepIndex}
                         />
-
                         {helpMessage && (
                             <Flex gap={20} style={{marginLeft:30, marginTop:20}}>
                                 <BulbFilled style={{color: 'rgb(225, 255, 0)', fontSize:22}} />
@@ -163,7 +150,6 @@ export function UserApplicationCardOne({app, onStatusChange}) {
                         )}
                     </>
                 )}
-
                 <Flex justify="space-between" align="center" style={{margin: '20px 20px 0 20px', padding: '0 10px'}}>
                     <div style={{display: 'flex', flexDirection: 'column', gap:5}}>
                         <Typography.Title style={{margin: 0, fontSize: '18px', fontWeight: 400}} level={5}>
@@ -171,7 +157,7 @@ export function UserApplicationCardOne({app, onStatusChange}) {
                         </Typography.Title>
                         <Typography.Title style={{margin: 0, fontSize: '18px', fontWeight: 400}} level={5}>
                             <span style={{fontWeight: 600}}>Файл: </span>
-                            {app?.file_path ? ( // Используем app.file_path
+                            {app?.file_path ? (
                                 <a href={`http://localhost:8000/${app.file_path}`} target="_blank" rel="noopener noreferrer">
                                      <Typography.Text>{app.file_path.split('/').pop()}</Typography.Text>
                                 </a>
@@ -187,13 +173,18 @@ export function UserApplicationCardOne({app, onStatusChange}) {
                         </Typography.Title>
                         <Typography.Title style={{margin: 0, fontSize: '18px', fontWeight: 400}} level={5}>
                             <span style={{fontWeight: 600}}>Стоимость: </span>
-                            {app?.price > 0 ? ( // Используем app.price
+                            {app?.price > 0 ? (
                                 <Tag style={{fontSize:16}} color="green" bordered={false}>{app.price}₽</Tag>
                             ) : (
                                 <Typography.Text type="secondary">Не оценена</Typography.Text>
                             )}
                         </Typography.Title>
-                        {app.status === 'reject' && app.comments && ( // Отображаем причину отклонения
+                        {app.assigned_manufacturer_name && (
+                            <Typography.Title style={{margin: 0, fontSize: '18px', fontWeight: 400}} level={5}>
+                                <span style={{fontWeight: 600}}>Назначен производитель: </span>{app.assigned_manufacturer_name}
+                            </Typography.Title>
+                        )}
+                        {app.status === 'reject' && app.comments && (
                             <Typography.Title style={{margin: 0, fontSize: '18px', fontWeight: 400, color: 'red'}} level={5}>
                                 <span style={{fontWeight: 600}}>Причина отклонения: </span>{app.comments}
                             </Typography.Title>
