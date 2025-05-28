@@ -1,11 +1,10 @@
-import { Layout, Typography, message, Flex, Spin } from "antd" // Импортируем Spin
-import { useTRPS } from "../../../../context"
-import { useEffect, useState } from "react"
-import { PersonalData } from "../PersonalData" // PersonalData не используется в этом компоненте, можно удалить
-import axios from "axios"
-import { DepartmentApplicationCard } from "./DepartmentApplicationCard"
-import { Button } from "../../Button"
-// import { ExecutorResourceManagement } from "../AccountExecutor/ExecutorResourceManagement" // Этот компонент не используется здесь, можно удалить
+import { Layout, Typography, message, Flex, Spin } from "antd";
+import { useTRPS } from "../../../../context";
+import { useEffect, useState } from "react";
+import { PersonalData } from "../PersonalData";
+import axios from "axios";
+import { DepartmentApplicationCard } from "./DepartmentApplicationCard";
+import { Button } from "../../Button";
 
 
 const {Content} = Layout
@@ -21,15 +20,16 @@ const tabStyle = {
 }
 
 const STATUSES = {
-    all: [], // Пустой массив для "Все заявки" (бэкенд вернет все)
-    sent_for_evaluation: ['sent_for_evaluation'], // Новые заявки
-    accepted_evaluation: ['accepted_evaluation'], // Оцениваются
-    evaluated: ['evaluated', 'paid_for', 'accepted_production', 'produced', 'sent'], // Завершенные (различные финальные/промежуточные успешные статусы)
-    reject: ['reject'], // Отклоненные
+    all: [],
+    sent_for_evaluation: ['sent_for_evaluation'],
+    accepted_evaluation: ['accepted_evaluation'],
+    evaluated: ['evaluated'],
+    evaluated_and_after: ['evaluated', 'paid_for', 'accepted_production', 'produced', 'sent'],
+    reject: ['reject'],
 };
 
 
-export function AccountDepartmentMain({applications, setApplications, currentUser, loading}){ // Принимаем loading
+export function AccountDepartmentMain({applications, setApplications, currentUser, loading}){
     const {app, data } = useTRPS();
     const [filteredApps, setFilteredApps] = useState([]);
     const [activeTab, setActiveTab] = useState("all");
@@ -40,7 +40,9 @@ export function AccountDepartmentMain({applications, setApplications, currentUse
              setFilteredApps([]);
              return;
         }
+
         const statusesToFilter = STATUSES[activeTab];
+
         if (activeTab === "all") {
             setFilteredApps(applications);
         } else {
@@ -57,14 +59,12 @@ export function AccountDepartmentMain({applications, setApplications, currentUse
 
         if (Object.keys(updates).length === 0) {
              console.warn("No updates provided for handleUpdateApplication");
+             message.warning("Не указаны данные для обновления.");
              return;
         }
 
         try {
-            // Отправляем запрос на бэкенд для обновления заказа
-            // Axios Interceptor добавит токен, бэкенд проверит роль
             const response = await axios.patch(`http://localhost:8000/orders/${orderId}`, updates);
-
             console.log('Order updated on backend:', response.data);
 
             setApplications(prev => prev.map(app =>
@@ -83,10 +83,18 @@ export function AccountDepartmentMain({applications, setApplications, currentUse
         }
     }
 
+    const countApplicationsByStatus = (statuses) => {
+        if (!applications) return 0;
+        if (statuses.length === 0) return applications.length;
+        return applications.filter(app => statuses.includes(app.status)).length;
+    };
+
+
     return <Content style={contentStyle}>
         {app &&
         <>
             <Typography.Title style={{marginBottom:30}} level={2}>Заявки клиентов</Typography.Title>
+
             <Flex
                 justify="space-between"
                 style={{ marginBottom: 30, width:"90%"}}
@@ -95,52 +103,59 @@ export function AccountDepartmentMain({applications, setApplications, currentUse
                     style={tabStyle}
                     isActive={activeTab === 'all'}
                     onClick={() => handleTabChange('all')}
-                    >
-                        Все ({applications?.length || 0})
+                >
+                    Все ({countApplicationsByStatus(STATUSES.all)})
                 </Button>
                 <Button
                     style={tabStyle}
                     isActive={activeTab === 'sent_for_evaluation'}
                     onClick={() => handleTabChange('sent_for_evaluation')}
-                    >
-                        Новые ({applications?.filter(app => STATUSES.sent_for_evaluation.includes(app.status)).length || 0})
+                >
+                    Новые ({countApplicationsByStatus(STATUSES.sent_for_evaluation)})
                 </Button>
                 <Button
                     style={tabStyle}
                     isActive={activeTab === 'accepted_evaluation'}
                     onClick={() => handleTabChange('accepted_evaluation')}
-                    >
-                        Оцениваются ({applications?.filter(app => STATUSES.accepted_evaluation.includes(app.status)).length || 0})
+                >
+                    Оцениваются ({countApplicationsByStatus(STATUSES.accepted_evaluation)})
                 </Button>
                 <Button
                     style={tabStyle}
-                    isActive={activeTab === 'evaluated'}
-                    onClick={() => handleTabChange('evaluated')}
-                    >
-                        Завершенные ({applications?.filter(app => STATUSES.evaluated.includes(app.status)).length || 0})
+                    isActive={activeTab === 'evaluated_and_after'}
+                    onClick={() => handleTabChange('evaluated_and_after')}
+                >
+                    Оцененные и далее ({countApplicationsByStatus(STATUSES.evaluated_and_after)})
                 </Button>
                 <Button
                     style={tabStyle}
                     isActive={activeTab === 'reject'}
                     onClick={() => handleTabChange('reject')}
-                    >
-                        Отклонённые ({applications?.filter(app => STATUSES.reject.includes(app.status)).length || 0})
+                >
+                    Отклонённые ({countApplicationsByStatus(STATUSES.reject)})
                 </Button>
             </Flex>
-            <div className="">
+
+            <div style={{ minHeight: '100px' }}>
                 {loading ? (
-                    <Typography.Text>Загрузка заявок...</Typography.Text>
+                    <Spin size="large" tip="Загрузка заявок..." style={{display: 'block', textAlign: 'center', marginTop: '50px'}}/>
                 ) : (
+                    console.log("AccountDepartmentMain: filteredApps before map:", filteredApps),
                     filteredApps && filteredApps.length > 0 ? (
-                        filteredApps.map(app => (
-                            <DepartmentApplicationCard
-                                app={app}
-                                key={app.id}
-                                onUpdate={handleUpdateApplication}
-                            />
-                        ))
+                        filteredApps.map(app => {
+                            console.log("AccountDepartmentMain: Rendering card for app:", app);
+                            return (
+                                <DepartmentApplicationCard
+                                    app={app}
+                                    key={app.id}
+                                    onUpdate={handleUpdateApplication}
+                                />
+                            );
+                        })
                     ) : (
-                        <Typography.Text>Нет заявок с таким статусом.</Typography.Text>
+                        <Typography.Text style={{display: 'block', textAlign: 'center', marginTop: '50px'}}>
+                             {applications && applications.length === 0 ? "Нет заявок в системе." : "Нет заявок с таким статусом."}
+                         </Typography.Text>
                     )
                 )}
             </div>

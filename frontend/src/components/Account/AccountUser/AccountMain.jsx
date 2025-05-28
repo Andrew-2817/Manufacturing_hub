@@ -1,11 +1,11 @@
-import { Layout, Typography, message, Flex, Spin } from "antd" // Импортируем Spin
+import { Layout, Typography, message, Flex, Spin } from "antd"
 import { useTRPS } from "../../../../context"
-// import { UserApplicationCardOne } from "./UserApplicationCardOne" // Оставим импорт, он используется ниже
 import { useEffect, useState } from "react"
 import { PersonalData } from "../PersonalData"
-import { Button } from "../../Button"
 import axios from "axios"
-import { UserApplicationCardOne } from "./UserApplicationCardOne" // Явный импорт
+import { UserApplicationCardOne } from "./UserApplicationCardOne"
+// ИЗМЕНЕНО: Добавляем импорт компонента Button
+import { Button } from "../../Button"
 
 
 const {Content} = Layout
@@ -32,7 +32,7 @@ const USER_STATUSES = {
 };
 
 
-export function AccountMain({ applications, currentUser, setUserApplications, loading }){ // Принимаем applications, currentUser, setUserApplications и loading
+export function AccountMain({ applications, currentUser, setUserApplications, loading }){
     const {app, data } = useTRPS();
 
     const [filteredApps, setFilteredApps] = useState([]);
@@ -41,7 +41,7 @@ export function AccountMain({ applications, currentUser, setUserApplications, lo
     // Обновляем filteredApps при изменении applications или activeTab
     useEffect(() => {
         console.log("AccountMain useEffect: applications or activeTab changed", { applications, activeTab });
-         if (!applications) {
+         if (applications === null) {
              setFilteredApps([]);
              return;
          }
@@ -140,19 +140,20 @@ export function AccountMain({ applications, currentUser, setUserApplications, lo
 
             <div className="">
                 {loading ? (
-                     <Typography.Text>Загрузка заказов...</Typography.Text>
+                     <Spin size="large" tip="Загрузка заказов..." style={{display: 'block', textAlign: 'center', marginTop: '50px'}}/>
                 ) : (
                     filteredApps && filteredApps.length > 0 ? (
                         filteredApps.map(app => (
-                            // Передаем данные заказа и функцию обновления
                             <UserApplicationCardOne
                                 app={app}
                                 key={app.id}
-                                onStatusChange={handleUpdateApplication} // Передаем функцию обновления
+                                onStatusChange={handleUpdateApplication}
                             />
                         ))
                     ) : (
-                         <Typography.Text>Нет заказов с таким статусом.</Typography.Text>
+                         <Typography.Text style={{display: 'block', textAlign: 'center', marginTop: '50px'}}>
+                             {applications && applications.length === 0 ? "У вас пока нет заказов." : "Нет заказов с таким статусом."}
+                         </Typography.Text>
                     )
                 )}
             </div>

@@ -7,12 +7,9 @@ import os
 from .. import schemas
 from backend.crud import order
 from ..database import get_db
-# Импортируем зависимости аутентификации
 from backend.auth import get_current_user_is_department, get_current_user, get_current_user_is_executor
-# Импортируем обновленные CRUD manufacture_user и manufacture_order
 from backend.crud import manufacture_user
 from backend.crud import manufacture_order
-
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -21,30 +18,24 @@ UPLOAD_DIRECTORY = "uploaded_files"
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
 
-# Эндпоинт для создания заказа с загрузкой файла (доступен без аутентификации)
+
 @router.post("/create_with_file/", response_model=schemas.Order)
 def create_order_with_file(
-    user_order_id: Annotated[int, Form()],
-    order_number: Annotated[int, Form()],
-    email: Annotated[str, Form()],
-    deadline: Annotated[str, Form()],
+        user_order_id: Annotated[int, Form()],
+        order_number: Annotated[int, Form()],
+        email: Annotated[str, Form()],
+        deadline: Annotated[str, Form()],
 
-    description: Annotated[Optional[str], Form()] = None,
-    file: Annotated[UploadFile, File()] = None,
-    geoip_lat: Annotated[float, Form()] = 0.0, # Заглушка (нужно получать на фронте)
-    geoip_lon: Annotated[float, Form()] = 0.0, # Заглушка (нужно получать на фронте)
+        description: Annotated[Optional[str], Form()] = None,
+        file: Annotated[UploadFile, File()] = None,
+        geoip_lat: Annotated[float, Form()] = 0.0,
+        geoip_lon: Annotated[float, Form()] = 0.0,
 
-    db: Session = Depends(get_db)
+        db: Session = Depends(get_db)
 ):
     file_location = None
     if file:
         file_name = file.filename
-        # Рекомендуется сделать имя файла более уникальным, чтобы избежать перезаписи
-        # Например: f"{uuid.uuid4()}_{file_name}" или f"{user_order_id}_{order_number}_{file_name}"
-        # import uuid
-        # unique_file_name = f"{uuid.uuid4()}_{file_name}"
-        # file_location = os.path.join(UPLOAD_DIRECTORY, unique_file_name)
-        # Пока оставим как есть для простоты
         file_location = os.path.join(UPLOAD_DIRECTORY, file_name)
 
         try:
@@ -70,7 +61,7 @@ def create_order_with_file(
 
     return db_order
 
-# Эндпоинт для создания заказа БЕЗ файла (если еще нужен)
+
 @router.post("/", response_model=schemas.Order)
 def create_order_without_file(ord: schemas.OrderCreate, db: Session = Depends(get_db)):
     return order.create_order(db,
@@ -87,110 +78,170 @@ def create_order_without_file(ord: schemas.OrderCreate, db: Session = Depends(ge
 
 @router.get("/", response_model=List[schemas.Order])
 def get_all_orders(db: Session = Depends(get_db)):
-    """ Получить все заказы. Может быть доступен только админам в будущем. """
-    # Добавить зависимость get_current_user_is_admin здесь в будущем
     return order.get_all_orders(db)
 
-# Эндпоинт для получения заказов пользователя по user_id (защищен!)
+
 @router.get("/user/{user_id}", response_model=List[schemas.Order])
 def get_user_orders(user_id: int,
-                    current_user: Annotated[schemas.User, Depends(get_current_user)], # Зависимость аутентификации
+                    current_user: Annotated[schemas.User, Depends(get_current_user)],
                     db: Session = Depends(get_db)):
-    """ Получить все заказы конкретного пользователя. """
-    # Проверка, что запрашиваются заказы текущего пользователя или пользователь - админ
     if current_user.id != user_id and current_user.role != 'admin':
-         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access these orders")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access these orders")
 
     return order.get_orders_by_user_id(db, user_id=user_id)
 
-# Эндпоинт для получения заказов для отдела/роли с фильтрацией по статусам (защищен!)
+
 @router.get("/department/", response_model=List[schemas.Order],
-            dependencies=[Depends(get_current_user_is_department)]) # Зависимость проверяет роль
+            dependencies=[Depends(get_current_user_is_department)])
 def get_department_orders(
-    statuses: Optional[List[str]] = Query(None), # Обычный параметр с дефолтом
-    db: Session = Depends(get_db) # Зависимость (перемещена в конец)
+        statuses: Optional[List[str]] = Query(None),
+        db: Session = Depends(get_db)
 ):
-    """ Получить заказы для технологического отдела, с возможностью фильтрации по статусам. """
-    # Зависимость get_current_user_is_department уже проверила роль. current_user доступен через Depends в dependencies.
     print(f"Fetching orders with statuses: {statuses}")
     return order.get_orders_by_statuses(db=db, statuses=statuses)
 
 
-# НОВЫЙ ЭНДПОИНТ для получения заказов для производителя (защищен!)
 @router.get("/executor/me/", response_model=List[schemas.Order],
-            dependencies=[Depends(get_current_user_is_executor)]) # Зависимость проверяет роль
+            dependencies=[Depends(get_current_user_is_executor)])
 def get_executor_orders_me(
-     # ПЕРЕСТАВЛЕНО: Параметр current_user без явного дефолта идет первым синтаксически
-     current_user: Annotated[schemas.User, Depends(get_current_user)],
-
-     # Затем параметры с дефолтами
-     db: Session = Depends(get_db), # Зависимость с дефолтом
-     statuses: Optional[List[str]] = Query(None) # Обычный параметр с дефолтом Query
-
+        current_user: Annotated[schemas.User, Depends(get_current_user)],
+        db: Session = Depends(get_db),
+        statuses: Optional[List[str]] = Query(None)
 ):
-    """ Получить заказы, назначенные текущему авторизованному производителю. """
-    # Используем новую CRUD функцию для поиска связи пользователя-производителя
     manufacture_user_link = manufacture_user.get_manufacture_user_by_user_id(db, user_id=current_user.id)
 
     if not manufacture_user_link:
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Executor user is not linked to any manufacture")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Executor user is not linked to any manufacture")
 
     manufacture_id = manufacture_user_link.manufacture_id
-
-    # Используем новую CRUD функцию для получения manufacture_order записей
     manufacture_orders = manufacture_order.get_manufacture_orders_by_manufacture_id(db, manufacture_id=manufacture_id)
-
     order_ids = [mo.order_id for mo in manufacture_orders]
 
     if not order_ids:
-         return [] # Return empty list if no orders assigned
+        return []
 
-    # Получаем объекты заказов по их ID, опционально фильтруя по статусам
     executor_orders = order.get_orders_by_ids_and_statuses(db, order_ids=order_ids, statuses=statuses)
 
     return executor_orders
 
 
-# Эндпоинт для частичного обновления заказа по ID (защищен!)
+# ИЗМЕНЕНО: Эндпоинт для частичного обновления заказа
 @router.patch("/{order_id}", response_model=schemas.Order)
 def update_order_endpoint(
-    order_id: int,
-    updates: schemas.OrderUpdate, # Принимает схему OrderUpdate для частичного обновления
-    current_user: Annotated[schemas.User, Depends(get_current_user)], # Зависимость аутентификации
-    db: Session = Depends(get_db)
+        order_id: int,
+        updates: schemas.OrderUpdate,
+        current_user: Annotated[schemas.User, Depends(get_current_user)],
+        db: Session = Depends(get_db)
 ):
-    """ Частично обновить заказ по ID. """
-    # Добавить более детальную проверку прав доступа:
-    # - Отдел может менять статус до 'evaluated', comments, price.
-    # - Производитель может менять статус с 'paid_for' до 'sent', price (редко?), comments.
-    # - Обычный пользователь не может обновлять через этот эндпоинт (кроме, возможно, отмены?)
-    # - Админ может менять все.
-
-    # Простая проверка: разрешаем обновление, если пользователь - отдел, производитель или админ
-    if current_user.role not in ['department', 'executor', 'admin']:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update orders")
-
-    # Получаем текущий заказ, чтобы проверить его статус и роль пользователя
+    """
+    Частично обновить заказ по ID.
+    Разрешения:
+    - Admin: может обновлять любые поля любого заказа.
+    - Department: может обновлять status (до 'evaluated'), comments, price для заказов, которые не отклонены и не завершены.
+    - Executor: может обновлять status (начиная с 'paid_for') для назначенных им заказов.
+    - User: может обновлять status ТОЛЬКО на 'paid_for' для СВОЕГО заказа, если он в статусе 'evaluated' и имеет цену.
+    """
     existing_order = order.get_order_by_id(db, order_id)
     if not existing_order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
-    # Добавить более гранулярную проверку прав на основе роли current_user и статуса existing_order.status
-    # Например:
-    # if current_user.role == 'department' and existing_order.status not in ['sent_for_evaluation', 'accepted_evaluation']:
-    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Department can only update orders in evaluation stages")
-    # if current_user.role == 'executor' and existing_order.status not in ['paid_for', 'accepted_production', 'produced']:
-    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Executor can only update orders in production stages")
-    # и т.д.
+    # Получаем обновляемые поля из запроса
+    requested_updates = updates.model_dump(exclude_unset=True)
 
-    # Обновляем заказ, используя model_dump для получения только заданных полей из схемы обновления
-    # exclude_unset=True гарантирует, что будут обновлены только те поля, которые были явно переданы в запросе
-    # (те, что пользователь реально изменил в форме или через логику фронтенда)
-    # Предполагаем Pydantic v2 (model_dump). Если Pydantic v1, использовать updates.dict(exclude_unset=True)
-    db_order = order.update_order(db=db, order_id=order_id, updates=updates.model_dump(exclude_unset=True))
+    # --- Логика проверки разрешений ---
+
+    # 1. Администратор имеет полные права
+    if current_user.role == 'admin':
+        pass  # Admin может делать все, не нужны дополнительные проверки
+
+    # 2. Пользователь (user) может только оплатить СВОЙ заказ
+    elif current_user.role == 'user':
+        # Проверяем, что пользователь пытается обновить ТОЛЬКО статус на 'paid_for'
+        # и только для своего заказа
+        if (existing_order.user_order_id != current_user.id or  # Не свой заказ
+                len(requested_updates) != 1 or  # Пытается обновить больше одного поля
+                'status' not in requested_updates or  # Не меняет статус
+                requested_updates['status'] != 'paid_for' or  # Меняет на что-то другое, кроме 'paid_for'
+                existing_order.status != 'evaluated' or  # Текущий статус не 'evaluated'
+                existing_order.price <= 0  # Цена не установлена или 0
+        ):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="You can only pay for your own evaluated orders.")
+        # Если все проверки для user прошли, позволяем обновить статус
+
+    # 3. Технологический отдел (department)
+    elif current_user.role == 'department':
+        # Отдел может менять статус (до 'evaluated'), comments, price
+        # Не должен менять user_order_id, order_number, file_path, ready_to
+        invalid_fields_for_department = set(requested_updates.keys()) - {'status', 'comments', 'price'}
+        if invalid_fields_for_department:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"Department cannot update fields: {', '.join(invalid_fields_for_department)}")
+
+        # Отдел не должен менять статус на 'paid_for', 'produced', 'sent', 'reject'
+        if 'status' in requested_updates:
+            if requested_updates['status'] in ['paid_for', 'produced', 'sent']:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="Department cannot set status to 'paid_for', 'produced', or 'sent'.")
+            # Отдел может отклонить
+            if requested_updates['status'] == 'reject':
+                if not requested_updates.get('comments'):
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                        detail="Reason for rejection must be provided.")
+            # Отдел не должен менять статусы уже завершенных для него заказов
+            if existing_order.status in ['evaluated', 'paid_for', 'produced', 'sent', 'reject']:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="Department cannot update already evaluated, rejected or completed orders.")
+
+    # 4. Производитель (executor)
+    elif current_user.role == 'executor':
+        # Проверяем, что заказ назначен этому производителю
+        manufacture_user_link = manufacture_user.get_manufacture_user_by_user_id(db, user_id=current_user.id)
+        if not manufacture_user_link:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Executor user is not linked to any manufacture.")
+
+        manufacture_orders_for_executor = manufacture_order.get_manufacture_orders_by_manufacture_id(db,
+                                                                                                     manufacture_id=manufacture_user_link.manufacture_id)
+        assigned_order_ids = [mo.order_id for mo in manufacture_orders_for_executor]
+
+        if order_id not in assigned_order_ids:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not assigned to this order.")
+
+        # Производитель может менять status (начиная с 'paid_for' до 'sent'), comments (если нужно)
+        invalid_fields_for_executor = set(requested_updates.keys()) - {'status', 'comments'}
+        if invalid_fields_for_executor:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"Executor cannot update fields: {', '.join(invalid_fields_for_executor)}")
+
+        if 'status' in requested_updates:
+            # Производитель не может изменить статус назад или на 'evaluated', 'sent_for_evaluation', 'accepted_evaluation'
+            allowed_next_statuses = {
+                'paid_for': 'accepted_production',
+                'accepted_production': 'produced',
+                'produced': 'sent'
+            }
+            if requested_updates['status'] not in allowed_next_statuses.values() and requested_updates[
+                'status'] != 'sent':
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid status change for executor.")
+
+            # Производитель не должен менять статус на более ранний
+            current_status_index = ['paid_for', 'accepted_production', 'produced', 'sent'].index(existing_order.status)
+            requested_status_index = ['paid_for', 'accepted_production', 'produced', 'sent'].index(
+                requested_updates['status'])
+            if requested_status_index < current_status_index:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot revert order status.")
+
+
+    else:
+        # Если роль не попадает ни под одно из разрешенных выше условий
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update orders.")
+
+    # --- Выполняем обновление, если проверки пройдены ---
+    db_order = order.update_order(db=db, order_id=order_id, updates=requested_updates)
 
     if db_order is None:
-        # Это маловероятно, если get_order_by_id прошел успешно, но на всякий случай
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found after update attempt")
 
     return db_order
@@ -198,20 +249,15 @@ def update_order_endpoint(
 
 @router.delete("/{order_id}", response_model=schemas.Order)
 def delete_order(order_id: int,
-                 current_user: Annotated[schemas.User, Depends(get_current_user)], # Защищен!
+                 current_user: Annotated[schemas.User, Depends(get_current_user)],
                  db: Session = Depends(get_db)):
-    """ Удалить заказ по ID. Может быть доступен только админам или пользователю своего заказа? """
-    # Добавить проверку прав: например, только админ или пользователь, который создал заказ
-    # Чтобы проверить, кто создал заказ, нужно получить сам объект заказа:
-    # existing_order = order.get_order_by_id(db, order_id)
-    # if not existing_order:
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-    # if current_user.role != 'admin' and current_user.id != existing_order.user_order_id:
-    #      raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this order")
+    # Только админ или пользователь, который создал заказ, может его удалить
+    existing_order = order.get_order_by_id(db, order_id)
+    if not existing_order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
-    if current_user.role != 'admin': # Пока разрешаем удаление только админам
-         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete orders")
-
+    if current_user.role != 'admin' and current_user.id != existing_order.user_order_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this order.")
 
     item = order.delete_order(db, order_id)
     if item is None:

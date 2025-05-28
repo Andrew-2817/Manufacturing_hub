@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from backend.database import engine
 from backend.models.order import Order
 
+
 # Обновляем функцию create_order
 def create_order(db: Session, user_order_id: int, order_number: Optional[int], status: str, geoip_lat: float, geoip_lon: float, comments: Optional[str], price: float, ready_to: bool, file_path: Optional[str]):
     db_order = Order(
@@ -31,16 +32,25 @@ def get_orders_by_user_id(db: Session, user_id: int):
 # Функция для получения заказов по статусам (для отдела)
 def get_orders_by_statuses(db: Session, statuses: Optional[List[str]] = None):
     query = db.query(Order)
+    print(f"DEBUG: get_orders_by_statuses called with statuses: {statuses}") # <-- ДОБАВЛЕН ЛОГ
     if statuses:
-        query = query.filter(Order.status.in_(statuses))
+        # Убедимся, что фильтр корректен, даже если statuses - пустой список
+        if len(statuses) > 0: # Только если список статусов не пустой, применяем фильтр
+            query = query.filter(Order.status.in_(statuses))
     query = query.order_by(Order.order_number) # Или по Order.id
-    return query.all()
+    result = query.all()
+    print(f"DEBUG: get_orders_by_statuses returning {len(result)} orders.") # <-- ДОБАВЛЕН ЛОГ
+    # Для отладки, можно распечатать статусы возвращаемых заказов
+    for order_item in result:
+        print(f"DEBUG: Order ID: {order_item.id}, Status: {order_item.status}")
+    return result
 
 # НОВАЯ функция: получить заказы по списку их ID, опционально фильтруя по статусам
 def get_orders_by_ids_and_statuses(db: Session, order_ids: List[int], statuses: Optional[List[str]] = None) -> List[Order]:
     query = db.query(Order).filter(Order.id.in_(order_ids))
     if statuses:
-        query = query.filter(Order.status.in_(statuses))
+        if len(statuses) > 0:
+            query = query.filter(Order.status.in_(statuses))
     query = query.order_by(Order.order_number) # Или по Order.id
     return query.all()
 

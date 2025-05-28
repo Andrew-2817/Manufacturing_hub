@@ -1,10 +1,10 @@
-import { Layout } from "antd";
+import { Layout, Spin } from "antd"; // Импортируем Spin для индикатора загрузки
 import { useTRPS } from "../../../../context";
 import { MainFooter } from "../../Footer";
 import { AccountHeader } from "../AccountHeader";
 import { AccountSider } from "../AccountSider";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axios from "axios"; // Импортируем axios
 import { AccountDepartmentMain } from "./AccountDepartmentMain";
 
 
@@ -12,54 +12,90 @@ export function AccountDepartment(){
     const layoutStyle = {
         minHeight: "100vh"
     }
-    const { currentUser, loading: userLoading } = useTRPS(); // Получаем currentUser и loading
+    // Получаем currentUser и loading из контекста.
+    // loading показывает, загружаются ли данные самого пользователя при старте.
+    const { currentUser, loading: userLoading } = useTRPS();
 
-    // Состояние для всех заявок отдела
-    const [departmentApplications, setDepartmentApplications] = useState([]);
-    const [applicationsLoading, setApplicationsLoading] = useState(false); // Индикатор загрузки
+    // Состояние для хранения списка заявок отдела
+    const [departmentApplications, setDepartmentApplications] = useState(null); // Используем null для начального состояния "нет данных"
+    const [applicationsLoading, setApplicationsLoading] = useState(false); // Индикатор загрузки заявок
 
-    // Effect для загрузки заявок отдела при монтировании или изменении пользователя
+    // Effect для загрузки заявок отдела при монтировании компонента
+    // Этот эффект также перезапустится, если currentUser изменится (например, после успешного логина/обновления)
     useEffect(() => {
-        console.log("AccountDepartment useEffect: currentUser changed", currentUser);
+        console.log("AccountDepartment useEffect: currentUser changed or mounted", currentUser);
+
+        // Асинхронная функция для загрузки заявок
         async function fetchDepartmentApplications(){
-             // Загружаем заявки только если пользователь авторизован и имеет роль department
-             // (Хотя ProtectedRoute уже гарантирует роль, явная проверка здесь - хорошая практика)
+             // Проверяем, что пользователь авторизован и имеет роль 'department'
+             // ProtectedRoute уже делает эту проверку для маршрута, но здесь проверка данных тоже полезна.
             if (currentUser && currentUser.role === 'department') {
-                setApplicationsLoading(true);
+                setApplicationsLoading(true); // Начинаем загрузку заявок
+
                 try{
-                    // Запрос к защищенному эндпоинту для получения заявок отдела
-                    // Axios Interceptor добавит токен, бэкенд проверит роль
+                    // Отправляем GET запрос к защищенному эндпоинту для получения заявок отдела
+                    // Axios Interceptor автоматически добавит токен авторизации из localStorage
                     const response = await axios.get("http://localhost:8000/orders/department/");
+
                     if (response.data) {
-                        setDepartmentApplications(response.data);
+                        console.log("AccountDepartment: RAW Backend Response for Department Apps:", response.data); // <-- ДОБАВЛЕН ЛОГ
+                        setDepartmentApplications(response.data); // Устанавливаем полученные данные
                     } else {
-                        setDepartmentApplications([]);
+                        console.log("AccountDepartment: No department applications returned.");
+                        setDepartmentApplications([]); // Если данных нет или пустой массив
                     }
-                    setApplicationsLoading(false);
+                    setApplicationsLoading(false); // Загрузка завершена
+
                 } catch (error) {
                     console.error('Error fetching department applications:', error);
-                    // Обработка ошибок аутентификации/авторизации
-                    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                         console.log("Authentication/Authorization error fetching department apps.");
-                         // ProtectedRoute должен перенаправить
-                    } else {
-                        console.error('Other error fetching department applications:', error);
-                        setDepartmentApplications([]); // Сброс в случае ошибки
-                    }
-                    setApplicationsLoading(false);
+                    // Перехватчик Axios уже обрабатывает 401/403 ошибки.
+                    // Здесь можно просто установить пустой массив и сообщение об ошибке,
+                    // если это не ошибка аутентификации/авторизации, которую обработал ProtectedRoute.
+                    console.log("Failed to fetch department applications.");
+                    setDepartmentApplications([]); // Устанавливаем пустой массив в случае ошибки
+                    setApplicationsLoading(false); // Загрузка завершена с ошибкой
                 }
             } else {
-                 // Если currentUser нет или роль не department, очищаем список
-                 setDepartmentApplications([]);
-                 setApplicationsLoading(false);
+                // Если пользователь не department или не авторизован, сбрасываем заявки
+                 console.log("User is not department, not fetching applications.");
+                 setDepartmentApplications([]); // Очищаем или оставляем null
+                 setApplicationsLoading(false); // Загрузка завершена
             }
         }
 
-        fetchDepartmentApplications();
-    }, [currentUser]); // Перезагружаем заявки при изменении текущего пользователя
+        // Вызываем функцию загрузки
+        // Проверка loading: userLoading гарантирует, что мы не пытаемся загрузить заявки,
+        // пока данные currentUser еще сами загружаются из localStorage/API при старте.
+        if (!userLoading) {
+             fetchDepartmentApplications();
+        }
 
-    console.log("AccountDepartment - currentUser:", currentUser);
-    console.log("AccountDepartment - departmentApplications:", departmentApplications);
+
+    }, [currentUser, userLoading]); // Эффект срабатывает при изменении currentUser или userLoading
+
+    // Если пользователь загружается, или заявки загружаются, можно показать индикатор
+    if (userLoading || applicationsLoading === null) { // applicationsLoading === null может означать, что useEffect еще не запустился
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+                <Spin size="large" tip={userLoading ? "Loading user data..." : "Loading applications..."} />
+            </div>
+        );
+    }
+
+
+    // Если заявки еще null (т.е., эффект не сработал или currentUser стал null),
+    // возможно, стоит показать что-то другое, или ProtectedRoute должен был перенаправить.
+    // В норме, если userLoading === false и currentUser есть, departmentApplications будет либо [], либо массив.
+    // Проверим departmentApplications !== null
+     if (departmentApplications === null) {
+          console.log("departmentApplications is null, potentially unexpected state.");
+          // Можно показать сообщение об ошибке или индикатор, или просто пустой контент
+          return (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+                <Spin size="large" tip="Initializing..." />
+            </div>
+          )
+     }
 
 
     return(
@@ -68,10 +104,10 @@ export function AccountDepartment(){
             <Layout style={{minHeight: '100vh'}}>
                 <AccountSider currentUser={currentUser}/>
                 <AccountDepartmentMain
-                    applications={departmentApplications}
-                    setApplications={setDepartmentApplications}
+                    applications={departmentApplications} // Передаем полученный список заявок
+                    setApplications={setDepartmentApplications} // Передаем функцию для обновления списка после PATCH
                     currentUser={currentUser}
-                    loading={applicationsLoading} // Передаем состояние загрузки
+                    loading={applicationsLoading} // Передаем состояние загрузки в Main компонент для отображения спиннера внутри контента
                 />
             </Layout>
             <MainFooter/>
