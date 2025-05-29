@@ -16,12 +16,12 @@ def get_order_resources(db: Session) -> List[OrderResource]:
     """Получает все записи о необходимых ресурсах для всех заказов."""
     return db.query(OrderResource).all()
 
-# НОВАЯ ФУНКЦИЯ: Получает ресурсы, необходимые для конкретного заказа
+# Получает ресурсы, необходимые для конкретного заказа
 def get_order_resources_by_order_id(db: Session, order_id: int) -> List[OrderResource]:
     """Получает все записи о необходимых ресурсах для указанного заказа."""
     return db.query(OrderResource).filter(OrderResource.order_id == order_id).all()
 
-# НОВАЯ ФУНКЦИЯ: Удаляет все ресурсы, необходимые для конкретного заказа
+# Удаляет все ресурсы, необходимые для конкретного заказа
 def delete_all_order_resources_for_order(db: Session, order_id: int) -> int:
     """Удаляет все записи о необходимых ресурсах для указанного заказа и возвращает количество удаленных."""
     deleted_count = db.query(OrderResource).filter(OrderResource.order_id == order_id).delete()

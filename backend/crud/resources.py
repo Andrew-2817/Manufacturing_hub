@@ -45,7 +45,3 @@ def delete_resource(db: Session, resource_id: int):
         db.delete(resource)
         db.commit()
     return resource
-
-
-
-# print(get_manufactures_with_resource(Session(bind=engine), resource_type=['токарный', 'фрезерный']))

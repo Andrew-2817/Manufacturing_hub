@@ -8,19 +8,16 @@ from backend.models.manufacture_order import ManufactureOrder  # Импорти�
 from backend.models.manufacture import Manufacture  # Импортируем модель производителя
 
 
-# Вспомогательная функция для добавления JOIN к запросу заказов
-# Это позволит получать данные о назначенном производителе в одном запросе
+
 def _get_orders_with_manufacturer_info(db: Session):
     """
     Создает базовый запрос к Order, включая LEFT OUTER JOIN с ManufactureOrder и Manufacture,
     чтобы получить информацию о назначенном производителе.
     """
-    # LEFT OUTER JOIN используется, потому что не у каждого заказа есть назначенный производитель
-    # (пока заказ не оплачен и не назначен)
     query = db.query(
         Order,
-        ManufactureOrder,  # Включаем модель связи
-        Manufacture  # Включаем модель производителя
+        ManufactureOrder,
+        Manufacture
     ).outerjoin(
         ManufactureOrder, Order.id == ManufactureOrder.order_id
     ).outerjoin(
@@ -29,7 +26,6 @@ def _get_orders_with_manufacturer_info(db: Session):
     return query
 
 
-# Обновляем функцию create_order
 def create_order(db: Session, user_order_id: int, order_number: Optional[int], status: str, geoip_lat: float,
                  geoip_lon: float, comments: Optional[str], price: float, ready_to: bool, file_path: Optional[str]):
     db_order = Order(
@@ -50,11 +46,8 @@ def create_order(db: Session, user_order_id: int, order_number: Optional[int], s
 
 
 def get_order_by_id(db: Session, order_id: int):
-    # Используем базовый запрос с JOIN для получения полной информации, включая производителя
     result = _get_orders_with_manufacturer_info(db).filter(Order.id == order_id).first()
     if result:
-        # FastAPI/SQLAlchemy ORM Mode автоматически соберет объект Order
-        # Но для добавления assigned_manufacturer_name/id нужно вручную добавить
         order_obj, m_order, manufacturer = result
         if manufacturer:
             order_obj.assigned_manufacturer_id = manufacturer.id
@@ -65,9 +58,7 @@ def get_order_by_id(db: Session, order_id: int):
 
 # Функция для получения заказов пользователя по user_id
 def get_orders_by_user_id(db: Session, user_id: int) -> List[Order]:
-    # Используем базовый запрос с JOIN
     results = _get_orders_with_manufacturer_info(db).filter(Order.user_order_id == user_id).all()
-    # Обрабатываем результаты, чтобы добавить информацию о производителе к каждому объекту Order
     orders_list = []
     for order_obj, m_order, manufacturer in results:
         if manufacturer:
@@ -79,7 +70,6 @@ def get_orders_by_user_id(db: Session, user_id: int) -> List[Order]:
 
 # Функция для получения заказов по статусам (для отдела)
 def get_orders_by_statuses(db: Session, statuses: Optional[List[str]] = None) -> List[Order]:
-    # Используем базовый запрос с JOIN
     query = _get_orders_with_manufacturer_info(db)
     if statuses:
         if len(statuses) > 0:
@@ -96,10 +86,9 @@ def get_orders_by_statuses(db: Session, statuses: Optional[List[str]] = None) ->
     return orders_list
 
 
-# Функция для получения заказов по списку их ID, опционально фильтруя по статусам
+# Функция для получения заказов по списку их ID, фильтруя по статусам
 def get_orders_by_ids_and_statuses(db: Session, order_ids: List[int], statuses: Optional[List[str]] = None) -> List[
     Order]:
-    # Используем базовый запрос с JOIN
     query = _get_orders_with_manufacturer_info(db).filter(Order.id.in_(order_ids))
     if statuses:
         if len(statuses) > 0:
@@ -116,7 +105,7 @@ def get_orders_by_ids_and_statuses(db: Session, order_ids: List[int], statuses: 
     return orders_list
 
 
-# НОВАЯ функция для обновления заказа (без изменений)
+# Обновление заказа
 def update_order(db: Session, order_id: int, updates: Dict[str, Any]):
     db_order = db.query(Order).filter(Order.id == order_id).first()
     if db_order:
@@ -130,15 +119,12 @@ def update_order(db: Session, order_id: int, updates: Dict[str, Any]):
         db.refresh(db_order)
     return db_order
 
-
+# Получаем geoip_lat и geoip_lon из Order
 def get_orders_geoip_by_id(db: Session, order_id: int):
-    # Эта функция используется в selection.py, ей не нужна информация о производителе
-    # Просто получаем geoip_lat и geoip_lon из Order
     return db.query(Order.geoip_lat, Order.geoip_lon).filter(Order.id == order_id).first()
 
 
 def get_all_orders(db: Session):
-    # Используем базовый запрос с JOIN
     results = _get_orders_with_manufacturer_info(db).all()
     orders_list = []
     for order_obj, m_order, manufacturer in results:

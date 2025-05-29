@@ -11,7 +11,6 @@ def create_manufacture_user(db: Session, user_id: int, manufacture_id: int):
 def get_manufacture_users(db: Session):
     return db.query(ManufactureUser).all()
 
-# НОВАЯ функция: получить связь пользователя-производителя по user_id
 def get_manufacture_user_by_user_id(db: Session, user_id: int) -> ManufactureUser | None:
     return db.query(ManufactureUser).filter(ManufactureUser.user_id == user_id).first()
 

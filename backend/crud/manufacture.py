@@ -56,4 +56,3 @@ def delete_manufacture(db: Session, manufacture_id: int):
         db.commit()
     return manufacture
 
-# print(get_manufactures_locations_by_id(Session(bind=engine), [1, 2]))
