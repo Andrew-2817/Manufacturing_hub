@@ -38,7 +38,7 @@ def bulk_create_order_resources(order_id: int,
     Обновляет ресурсы для заказа: удаляет все существующие ресурсы для данного заказа
     и создает новые из предоставленного списка.
     """
-    # Сначала удаляем все существующие ресурсы для этого заказа
+
     order_resources.delete_all_order_resources_for_order(db, order_id=order_id)
 
     created_resources = []

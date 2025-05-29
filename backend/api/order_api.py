@@ -7,7 +7,7 @@ import os
 from .. import schemas
 from backend.crud import order
 from backend.crud import manufacture_order
-from backend.crud import manufacture  # Для получения данных о производителе
+from backend.crud import manufacture
 from backend.database import get_db
 from backend.auth import get_current_user_is_department, get_current_user, get_current_user_is_executor
 from backend.crud import manufacture_user
@@ -259,16 +259,12 @@ def update_order_endpoint(
         else:
             print(f"WARNING: Manufacturer selection failed for order {order_id}: {best_manufacturer_id_or_error}")
 
-    # После обновления, заново получаем объект заказа, чтобы включить информацию о производителе,
-    # если она была только что назначена.
-    # Это важно, чтобы фронтенд получил полную актуальную информацию.
     updated_order_with_manufacturer_info = order.get_order_by_id(db, order_id)
     if not updated_order_with_manufacturer_info:
-        # Это не должно произойти, если заказ только что был обновлен
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="Could not retrieve updated order info.")
 
-    return updated_order_with_manufacturer_info  # Возвращаем полный объект заказа с инфой о производителе
+    return updated_order_with_manufacturer_info
 
 
 @router.delete("/{order_id}", response_model=schemas.Order)
