@@ -1,12 +1,15 @@
-# React + Vite
+# Описание
+Агрегатор производственных услуг – это цифровая платформа, автоматизирующая взаимодействие между заказчиками, технологами и производителями. Система позволяет клиентам удобно оформлять заявки, техотделу – оперативно оценивать стоимость, а производителям – контролировать выполнение заказов. Проект сократил сроки обработки заявок и повысил прозрачность всего производственного цикла.
+# Задачи, решаемые этим проектом (криптопортфель)
+1.Упрощение заказа
+Централизованный способ оформления заявок на производство деталей без необходимости прямого контакта с производителями.
+2.Снижение временных затрат
+Быстрое оформление заявок с загрузкой чертежей и автоматизированным расчетом сроков.
+3.Личный кабинет для управления производственными заявками и мониторинга статуса их выполнения
+# Скриншоты
+<img width="1919" height="926" alt="image" src="https://github.com/user-attachments/assets/64507e6e-ddc0-4c05-9811-2295fc4c350b" />
+<img width="1919" height="931" alt="Снимок экрана 2025-04-04 163059" src="https://github.com/user-attachments/assets/3da2afc5-012f-45fb-9136-1028e2a8338d" />
+<img width="1919" height="927" alt="Снимок экрана 2025-04-04 163409" src="https://github.com/user-attachments/assets/ef652e5a-9d58-471c-94f8-5c42e21e3534" />
+<img width="1919" height="923" alt="Снимок экрана 2025-04-04 164035" src="https://github.com/user-attachments/assets/85e8afc1-7cb8-4b41-94e9-b972d10e0bf4" />
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
