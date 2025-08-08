@@ -8,7 +8,7 @@
 3.Личный кабинет для управления производственными заявками и мониторинга статуса их выполнения
 # Скриншоты
 <img width="1919" height="926" alt="image" src="https://github.com/user-attachments/assets/64507e6e-ddc0-4c05-9811-2295fc4c350b" />
-<img width="1919" height="931" alt="Снимок экрана 2025-04-04 163059" src="https://github.com/user-attachments/assets/3da2afc5-012f-45fb-9136-1028e2a8338d" />
+<img width="1919" height="936" alt="Снимок экрана 2025-04-04 163311" src="https://github.com/user-attachments/assets/32b96aee-1aa7-4d52-898f-5aa4782b56d1" />
 <img width="1919" height="927" alt="Снимок экрана 2025-04-04 163409" src="https://github.com/user-attachments/assets/ef652e5a-9d58-471c-94f8-5c42e21e3534" />
 <img width="1919" height="923" alt="Снимок экрана 2025-04-04 164035" src="https://github.com/user-attachments/assets/85e8afc1-7cb8-4b41-94e9-b972d10e0bf4" />
 
